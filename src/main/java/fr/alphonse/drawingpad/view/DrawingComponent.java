@@ -9,9 +9,7 @@ import fr.alphonse.drawingpad.model.Vertex;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
-import java.awt.event.MouseMotionListener;
+import java.awt.event.*;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.function.Function;
@@ -20,6 +18,8 @@ public class DrawingComponent extends JComponent {
     private Example model;
 
     private Vertex selectedVertex;
+
+    private Vector dragRelativeVector;
 
     private static final int OBJECT_RECTANGLE_RADIUS = 6;
 
@@ -41,18 +41,27 @@ public class DrawingComponent extends JComponent {
 
     private static final int LOOP_CENTER_DISTANCE = (int)(LOOP_LENGTH / Math.cos(LOOP_ANGLE));
 
+    private static final int ARROW_KEY_DELTA = 1;
+
+    private static final Vector ARROW_KEY_UP_DELTA = new Vector(0, -ARROW_KEY_DELTA);
+
+    private static final Vector ARROW_KEY_DOWN_DELTA = new Vector(0, ARROW_KEY_DELTA);
+
+    private static final Vector ARROW_KEY_LEFT_DELTA = new Vector(-ARROW_KEY_DELTA, 0);
+
+    private static final Vector ARROW_KEY_RIGHT_DELTA = new Vector(ARROW_KEY_DELTA, 0);
+
     public DrawingComponent() {
         super();
         setBackground(Color.WHITE);
         addMouseListener(new MouseListener() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                DrawingComponent.this.reactToClick(e);
             }
 
             @Override
             public void mousePressed(MouseEvent e) {
-
+                DrawingComponent.this.reactToClick(e);
             }
 
             @Override
@@ -81,6 +90,23 @@ public class DrawingComponent extends JComponent {
 
             }
         });
+        addKeyListener(new KeyListener() {
+            @Override
+            public void keyTyped(KeyEvent e) {
+
+            }
+
+            @Override
+            public void keyPressed(KeyEvent e) {
+                DrawingComponent.this.reactToKey(e);
+            }
+
+            @Override
+            public void keyReleased(KeyEvent e) {
+
+            }
+        });
+        this.setFocusable(true);
     }
 
     public void setModel(Example model) {
@@ -226,6 +252,10 @@ public class DrawingComponent extends JComponent {
     private void reactToClick(MouseEvent event) {
         var position = new Position(event.getX() - this.getBounds().width/2, event.getY() - this.getBounds().height/2);
         this.selectedVertex = findVertexAtPosition(position);
+        if (this.selectedVertex != null && this.selectedVertex instanceof Object object) {
+            var objectPosition = model.getPositions().get(object);
+            this.dragRelativeVector = Vector.between(position, objectPosition);
+        }
         this.repaint();
     }
 
@@ -289,9 +319,24 @@ public class DrawingComponent extends JComponent {
     private void reactToDrag(MouseEvent event) {
         if (this.selectedVertex != null && this.selectedVertex instanceof Object object) {
             var position = new Position(event.getX() - this.getBounds().width/2, event.getY() - this.getBounds().height/2);
-            model.getPositions().put(object, position);
+            model.getPositions().put(object, position.translate(this.dragRelativeVector));
             this.repaint();
         }
     }
 
+    private void reactToKey(KeyEvent event) {
+        switch (event.getKeyCode()) {
+            case KeyEvent.VK_UP -> moveSelectedVertexBy(ARROW_KEY_UP_DELTA);
+            case KeyEvent.VK_DOWN -> moveSelectedVertexBy(ARROW_KEY_DOWN_DELTA);
+            case KeyEvent.VK_LEFT -> moveSelectedVertexBy(ARROW_KEY_LEFT_DELTA);
+            case KeyEvent.VK_RIGHT -> moveSelectedVertexBy(ARROW_KEY_RIGHT_DELTA);
+        }
+    }
+
+    private void moveSelectedVertexBy(Vector delta) {
+        if (this.selectedVertex != null && this.selectedVertex instanceof Object object) {
+            this.model.getPositions().put(object, this.model.getPositions().get(object).translate(delta));
+            this.repaint();
+        }
+    }
 }
