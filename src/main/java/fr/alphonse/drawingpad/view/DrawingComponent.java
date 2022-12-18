@@ -27,11 +27,19 @@ public class DrawingComponent extends JComponent {
 
     private static final double ARROW_ANGLE = Math.toRadians(25);
 
-    private static final double ARROW_LENGTH = 12;
+    private static final double ARROW_LENGTH = 10;
 
-    public static final BasicStroke SHADOW_STROKE = new BasicStroke(2);
+    private static final BasicStroke SHADOW_STROKE = new BasicStroke(2);
 
-    public static final BasicStroke BASIC_STROKE = new BasicStroke(1);
+    private static final BasicStroke BASIC_STROKE = new BasicStroke(1);
+
+    private static final double LOOP_ANGLE = Math.toRadians(23);
+
+    private static final int LOOP_LENGTH = 20;
+
+    private static final int LOOP_CIRCLE_RADIUS = (int)(LOOP_LENGTH * Math.tan(LOOP_ANGLE));
+
+    private static final int LOOP_CENTER_DISTANCE = (int)(LOOP_LENGTH / Math.cos(LOOP_ANGLE));
 
     public DrawingComponent() {
         super();
@@ -81,6 +89,8 @@ public class DrawingComponent extends JComponent {
 
     @Override
     protected void paintComponent(Graphics g) {
+        ((Graphics2D)g).setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+
         int translationX = getWidth() / 2;
         int translationY = getHeight() / 2;
         g.translate(translationX, translationY);
@@ -106,33 +116,41 @@ public class DrawingComponent extends JComponent {
         }
 
         for (Link link: model.getLinks()) {
+            if (link == selectedVertex) {
+                g.setColor(Color.RED);
+            }
+            else {
+                g.setColor(Color.BLACK);
+            }
+            if (isLoop(link)) {
+                drawLoop(findVertexPosition(link.getOrigin()), link.getOrigin(), g);
+                continue;
+            }
             var position1 = findVertexPosition(link.getOrigin());
             var position2 = findVertexPosition(link.getDestination());
             var linePosition1 = computeArrowMeetingPositionWithVertex(position2, position1, link.getOrigin());
             var linePosition2 = computeArrowMeetingPositionWithVertex(position1, position2, link.getDestination());
-            if (link == selectedVertex) {
-                g.setColor(Color.RED);
-            }
             g.drawLine(linePosition1.x(), linePosition1.y(), linePosition2.x(), linePosition2.y());
 
-            // draw arrow®
-            var lineAngle = Math.atan2(position2.y()-position1.y(), position2.x()-position1.x());
-            var arrowAngle1 = lineAngle - ARROW_ANGLE;
-            var arrowAngle2 = lineAngle + ARROW_ANGLE;
-            g.drawLine(linePosition2.x(), linePosition2.y(), linePosition2.x() - (int)Math.round(ARROW_LENGTH * Math.cos(arrowAngle1)) , linePosition2.y() - (int)Math.round(ARROW_LENGTH * Math.sin(arrowAngle1)));
-            g.drawLine(linePosition2.x(), linePosition2.y(), linePosition2.x() - (int)Math.round(ARROW_LENGTH * Math.cos(arrowAngle2)), linePosition2.y() - (int)Math.round(ARROW_LENGTH * Math.sin(arrowAngle2)));
-            if (link == selectedVertex) {
-                g.setColor(Color.BLACK);
-            }
+            drawArrow(linePosition2, position1, g);
         }
 
         g.translate(-translationX, -translationY);
+    }
+
+    private static boolean isLoop(Link link) {
+        return link.getOrigin() == link.getDestination();
     }
 
     private Position findVertexPosition(Vertex vertex) {
         return switch (vertex) {
             case Object object -> findObjectPosition(object);
             case Link link -> {
+                if (isLoop(link)) {
+                    var extremityVector = new Vector(0, -LOOP_CENTER_DISTANCE - LOOP_CIRCLE_RADIUS);
+                    var basePosition = findVertexPosition(link.getOrigin());
+                    yield basePosition.translate(extremityVector);
+                }
                 var position1 = findVertexPosition(link.getOrigin());
                 var position2 = findVertexPosition(link.getDestination());
                 yield Position.middle(position1, position2);
@@ -174,6 +192,37 @@ public class DrawingComponent extends JComponent {
         }
     }
 
+    private void drawLoop(Position position, Vertex vertex, Graphics g) {
+        var baseVector = new Vector(0, -LOOP_LENGTH);
+        var startVector = baseVector.rotate(-LOOP_ANGLE);
+        var endVector = baseVector.rotate(LOOP_ANGLE);
+        var startDestination = position.translate(startVector);
+        var endDestination = position.translate(endVector);
+        var startDestinationAnchor = computeArrowMeetingPositionWithVertex(startDestination, position, vertex);
+        var endDestinationAnchor = computeArrowMeetingPositionWithVertex(endDestination, position, vertex);
+        g.drawLine(startDestinationAnchor.x(), startDestinationAnchor.y(), startDestination.x(), startDestination.y());
+        g.drawLine(endDestinationAnchor.x(), endDestinationAnchor.y(), endDestination.x(), endDestination.y());
+
+        drawArrow(endDestinationAnchor, endDestination, g);
+
+        var centerVector = new Vector(0, -LOOP_CENTER_DISTANCE);
+        var center = position.translate(centerVector);
+        g.drawArc(center.x()-LOOP_CIRCLE_RADIUS, center.y()-LOOP_CIRCLE_RADIUS, LOOP_CIRCLE_RADIUS*2, LOOP_CIRCLE_RADIUS*2, (int)-Math.toDegrees(LOOP_ANGLE), (int)Math.toDegrees(Math.PI + 2 * LOOP_ANGLE));
+    }
+
+    private void drawArrow(Position position, Position origin, Graphics g) {
+        Vector lineVector = Vector.between(position, origin);
+        Vector baseVector = lineVector.multiply((float)ARROW_LENGTH / lineVector.length());
+        var arrowVector1 = baseVector.rotate(ARROW_ANGLE);
+        var arrowVector2 = baseVector.rotate(-ARROW_ANGLE);
+        var arrowPosition1 = position.translate(arrowVector1);
+        var arrowPosition2 = position.translate(arrowVector2);
+        g.drawLine(position.x(), position.y(), arrowPosition1.x(), arrowPosition1.y());
+        g.drawLine(position.x(), position.y(), arrowPosition2.x(), arrowPosition2.y());
+    }
+
+
+
     private void reactToClick(MouseEvent event) {
         var position = new Position(event.getX() - this.getBounds().width/2, event.getY() - this.getBounds().height/2);
         this.selectedVertex = findVertexAtPosition(position);
@@ -211,6 +260,14 @@ public class DrawingComponent extends JComponent {
     }
 
     private int findPositionDistanceFromLink(Position position, Link link) {
+
+        if (isLoop(link)) {
+            var basePosition = findVertexPosition(link.getOrigin());
+            var circleCenterVector = new Vector(0, -LOOP_CENTER_DISTANCE);
+            var circleCenter = basePosition.translate(circleCenterVector);
+            return (int)Position.distance(circleCenter, position);
+        }
+
         var position1 = findVertexPosition(link.getOrigin());
         var position2 = findVertexPosition(link.getDestination());
         var positionVector = Vector.between(position1, position);

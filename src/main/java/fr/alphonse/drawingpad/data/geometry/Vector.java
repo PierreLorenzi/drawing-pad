@@ -21,4 +21,12 @@ public record Vector(int x, int y) {
     public int infiniteNormLength() {
         return Math.max(Math.abs(x), Math.abs(y));
     }
+
+    public Vector rotate(double angle) {
+        return new Vector((int)(x * Math.cos(angle) - y * Math.sin(angle)), (int)(x * Math.sin(angle) + y * Math.cos(angle)));
+    }
+
+    public Vector multiply(float factor) {
+        return new Vector((int)(x * factor), (int)(y * factor));
+    }
 }
