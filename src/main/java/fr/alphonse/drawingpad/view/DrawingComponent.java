@@ -1,7 +1,8 @@
 package fr.alphonse.drawingpad.view;
 
 import fr.alphonse.drawingpad.data.Example;
-import fr.alphonse.drawingpad.data.Position;
+import fr.alphonse.drawingpad.data.geometry.Position;
+import fr.alphonse.drawingpad.data.geometry.Vector;
 import fr.alphonse.drawingpad.model.Link;
 import fr.alphonse.drawingpad.model.Object;
 import fr.alphonse.drawingpad.model.Vertex;
@@ -122,7 +123,7 @@ public class DrawingComponent extends JComponent {
             case Link link -> {
                 var position1 = findVertexPosition(link.getOrigin());
                 var position2 = findVertexPosition(link.getDestination());
-                yield new Position((position1.x() + position2.x())/2, (position1.y() + position2.y())/2);
+                yield Position.middle(position1, position2);
             }
             default ->  throw new Error("Unknown vertex class " + vertex.getClass().getSimpleName());
         };
@@ -141,23 +142,22 @@ public class DrawingComponent extends JComponent {
     }
 
     private static Position computeArrowMeetingPositionWithObject(Position position1, Position position2) {
-        var x = position2.x() - position1.x();
-        var y = position2.y() - position1.y();
-        boolean isHorizontal = Math.abs(x) > Math.abs(y);
+        var vector = Vector.between(position1, position2);
+        boolean isHorizontal = Math.abs(vector.x()) > Math.abs(vector.y());
         if (isHorizontal) {
-            if (x > 0) {
-                return new Position(position2.x() - OBJECT_RADIUS, position2.y() - OBJECT_RADIUS * y / x);
+            if (vector.x() > 0) {
+                return new Position(position2.x() - OBJECT_RADIUS, position2.y() - OBJECT_RADIUS * vector.y() / vector.x());
             }
             else {
-                return new Position(position2.x() + OBJECT_RADIUS, position2.y() + OBJECT_RADIUS * y / x);
+                return new Position(position2.x() + OBJECT_RADIUS, position2.y() + OBJECT_RADIUS * vector.y() / vector.x());
             }
         }
         else {
-            if (y > 0) {
-                return new Position(position2.x() - OBJECT_RADIUS * x / y, position2.y() - OBJECT_RADIUS);
+            if (vector.y() > 0) {
+                return new Position(position2.x() - OBJECT_RADIUS * vector.x() / vector.y(), position2.y() - OBJECT_RADIUS);
             }
             else {
-                return new Position(position2.x() + OBJECT_RADIUS * x / y, position2.y() + OBJECT_RADIUS);
+                return new Position(position2.x() + OBJECT_RADIUS * vector.x() / vector.y(), position2.y() + OBJECT_RADIUS);
             }
         }
     }
@@ -194,22 +194,27 @@ public class DrawingComponent extends JComponent {
 
     private int findPositionDistanceFromObject(Position position, Object object) {
         var objectPosition = findObjectPosition(object);
-        var distanceX = Math.abs(position.x() - objectPosition.x());
-        var distanceY = Math.abs(position.y() - objectPosition.y());
-        return Math.max(distanceX, distanceY);
+        var relativePosition = Vector.between(objectPosition, position);
+        return relativePosition.infiniteNormLength();
     }
 
     private int findPositionDistanceFromLink(Position position, Link link) {
         var position1 = findVertexPosition(link.getOrigin());
         var position2 = findVertexPosition(link.getDestination());
-        var positionFromOriginX = position.x() - position1.x();
-        var positionFromOriginY = position.y() - position1.y();
-        var destinationFromOriginX = position2.x() - position1.x();
-        var destinationFromOriginY = position2.y() - position1.y();
-        double discriminant = positionFromOriginX * destinationFromOriginY - positionFromOriginY * destinationFromOriginX;
-        double length = Math.sqrt(destinationFromOriginX * destinationFromOriginX + destinationFromOriginY * destinationFromOriginY);
-        double distance = Math.abs(discriminant) / length;
-        return (int)distance;
+        var positionVector = Vector.between(position1, position);
+        var linkVector = Vector.between(position1, position2);
+        float linkLength = Math.round(linkVector.length());
+
+        float relativePositionAlongVector = Vector.scalarProduct(positionVector, linkVector) / linkLength / linkLength;
+        if (relativePositionAlongVector < 0) {
+            return (int)Position.distance(position1, position);
+        }
+        else if (relativePositionAlongVector > 1) {
+            return (int)Position.distance(position2, position);
+        }
+
+        float distanceFromLine = Math.abs(Vector.discriminant(positionVector, linkVector)) / linkLength;
+        return (int)distanceFromLine;
     }
 
     private void reactToDrag(MouseEvent event) {

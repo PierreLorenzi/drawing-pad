@@ -1,5 +1,6 @@
 package fr.alphonse.drawingpad.data;
 
+import fr.alphonse.drawingpad.data.geometry.Position;
 import fr.alphonse.drawingpad.model.Object;
 import fr.alphonse.drawingpad.model.Link;
 

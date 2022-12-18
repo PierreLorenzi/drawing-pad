@@ -1,6 +1,7 @@
 package fr.alphonse.drawingpad.data;
 
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import fr.alphonse.drawingpad.data.geometry.Position;
 import fr.alphonse.drawingpad.data.json.ExampleJson;
 import fr.alphonse.drawingpad.model.Link;
 import fr.alphonse.drawingpad.model.Object;

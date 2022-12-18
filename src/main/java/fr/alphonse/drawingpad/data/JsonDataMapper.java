@@ -1,5 +1,6 @@
 package fr.alphonse.drawingpad.data;
 
+import fr.alphonse.drawingpad.data.geometry.Position;
 import fr.alphonse.drawingpad.data.json.LinkJson;
 import fr.alphonse.drawingpad.data.json.ObjectJson;
 import fr.alphonse.drawingpad.data.json.PositionJson;
