@@ -10,6 +10,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.awt.event.MouseMotionListener;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.function.Function;
@@ -52,6 +53,17 @@ public class DrawingComponent extends JComponent {
 
             @Override
             public void mouseExited(MouseEvent e) {
+
+            }
+        });
+        addMouseMotionListener(new MouseMotionListener() {
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                DrawingComponent.this.reactToDrag(e);
+            }
+
+            @Override
+            public void mouseMoved(MouseEvent e) {
 
             }
         });
@@ -199,4 +211,13 @@ public class DrawingComponent extends JComponent {
         double distance = Math.abs(discriminant) / length;
         return (int)distance;
     }
+
+    private void reactToDrag(MouseEvent event) {
+        if (this.selectedVertex != null && this.selectedVertex instanceof Object object) {
+            var position = new Position(event.getX() - this.getBounds().width/2, event.getY() - this.getBounds().height/2);
+            model.getPositions().put(object, position);
+            this.repaint();
+        }
+    }
+
 }
