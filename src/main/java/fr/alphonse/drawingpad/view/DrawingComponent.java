@@ -17,16 +17,21 @@ import java.util.Map;
 import java.util.function.Function;
 
 public class DrawingComponent extends JComponent {
-
     private Example model;
 
     private Vertex selectedVertex;
 
-    private static final int OBJECT_RADIUS = 6;
+    private static final int OBJECT_RECTANGLE_RADIUS = 6;
+
+    private static final int OBJECT_RADIUS = 8;
 
     private static final double ARROW_ANGLE = Math.toRadians(25);
 
     private static final double ARROW_LENGTH = 12;
+
+    public static final BasicStroke SHADOW_STROKE = new BasicStroke(2);
+
+    public static final BasicStroke BASIC_STROKE = new BasicStroke(1);
 
     public DrawingComponent() {
         super();
@@ -84,13 +89,20 @@ public class DrawingComponent extends JComponent {
         Map<Object, Position> positions = model.getPositions();
         for (Object object: model.getObjects()) {
             var position = positions.get(object);
+
+            g.setColor(Color.GRAY);
+            ((Graphics2D)g).setStroke(SHADOW_STROKE);
+            g.drawLine(position.x()-OBJECT_RECTANGLE_RADIUS+2, position.y()+OBJECT_RECTANGLE_RADIUS, position.x()+OBJECT_RECTANGLE_RADIUS, position.y()+OBJECT_RECTANGLE_RADIUS);
+            g.drawLine(position.x()+OBJECT_RECTANGLE_RADIUS, position.y()-OBJECT_RECTANGLE_RADIUS+2, position.x()+OBJECT_RECTANGLE_RADIUS, position.y()+OBJECT_RECTANGLE_RADIUS);
+            ((Graphics2D)g).setStroke(BASIC_STROKE);
+
             if (object == selectedVertex) {
                 g.setColor(Color.RED);
             }
-            g.fillRect(position.x()-OBJECT_RADIUS, position.y()-OBJECT_RADIUS, 2*OBJECT_RADIUS, 2*OBJECT_RADIUS);
-            if (object == selectedVertex) {
+            else {
                 g.setColor(Color.BLACK);
             }
+            g.fillRect(position.x()-OBJECT_RECTANGLE_RADIUS, position.y()-OBJECT_RECTANGLE_RADIUS, 2*OBJECT_RECTANGLE_RADIUS, 2*OBJECT_RECTANGLE_RADIUS);
         }
 
         for (Link link: model.getLinks()) {
