@@ -12,6 +12,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -29,6 +30,10 @@ public class DrawingComponent extends JComponent {
     private boolean hasDragged = false;
 
     private Vertex lastSelectedVertex = null;
+
+    private Position selectionRectangleOrigin = null;
+
+    private Position selectionRectangleDestination = null;
 
     private static final int OBJECT_RECTANGLE_RADIUS = 6;
 
@@ -75,6 +80,11 @@ public class DrawingComponent extends JComponent {
 
             @Override
             public void mouseReleased(MouseEvent event) {
+                if (selectionRectangleOrigin != null && selectionRectangleDestination != null) {
+                    DrawingComponent.this.repaint();
+                }
+                DrawingComponent.this.selectionRectangleOrigin = null;
+                DrawingComponent.this.selectionRectangleDestination = null;
                 if (!hasDragged && lastSelectedVertex != null && DrawingComponent.this.selectedVertices.size() > 1 && (event.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) == 0) {
                     DrawingComponent.this.selectedVertices.removeIf(Predicate.not(Predicate.isEqual(lastSelectedVertex)));
                     DrawingComponent.this.repaint();
@@ -132,6 +142,15 @@ public class DrawingComponent extends JComponent {
         int translationX = getWidth() / 2;
         int translationY = getHeight() / 2;
         g.translate(translationX, translationY);
+
+        if (this.selectionRectangleOrigin != null && this.selectionRectangleDestination != null) {
+            g.setColor(Color.LIGHT_GRAY);
+            var originX = Math.min(selectionRectangleOrigin.x(), selectionRectangleDestination.x());
+            var originY = Math.min(selectionRectangleOrigin.y(), selectionRectangleDestination.y());
+            var width = Math.abs(selectionRectangleOrigin.x() - selectionRectangleDestination.x());
+            var height = Math.abs(selectionRectangleOrigin.y() - selectionRectangleDestination.y());
+            g.fillRect(originX, originY, width, height);
+        }
 
         g.setColor(Color.BLACK);
         Map<Object, Position> positions = model.getPositions();
@@ -264,6 +283,9 @@ public class DrawingComponent extends JComponent {
         var selectedVertex = findVertexAtPosition(position);
         this.lastSelectedVertex = selectedVertex;
         boolean isShiftKeyPressed = (event.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) != 0;
+        if (selectedVertex == null && !isShiftKeyPressed) {
+            this.selectionRectangleOrigin = position;
+        }
         boolean alreadySelected = selectedVertex != null && selectedVertices.contains(selectedVertex);
         this.canDrag = !(isShiftKeyPressed && (selectedVertex == null || alreadySelected));
         this.hasDragged = false;
@@ -344,11 +366,22 @@ public class DrawingComponent extends JComponent {
     }
 
     private void reactToDrag(MouseEvent event) {
+        var position = new Position(event.getX() - this.getBounds().width/2, event.getY() - this.getBounds().height/2);
+        if (selectionRectangleOrigin != null) {
+            this.selectionRectangleDestination = position;
+            List<Object> objectsInRectangle = model.getObjects().stream()
+                    .filter(object -> isInRectangleBetweenPoints(model.getPositions().get(object), selectionRectangleOrigin, selectionRectangleDestination))
+                    .toList();
+            this.selectedVertices.clear();
+            this.selectedVertices.addAll(objectsInRectangle);
+            addLinksBetweenVertices(this.selectedVertices);
+            this.repaint();
+            return;
+        }
         if (!canDrag) {
             return;
         }
         this.hasDragged = true;
-        var position = new Position(event.getX() - this.getBounds().width/2, event.getY() - this.getBounds().height/2);
         boolean needsRepaint = false;
         for (Vertex selectedVertex: selectedVertices) {
             if (selectedVertex instanceof Object object) {
@@ -359,6 +392,23 @@ public class DrawingComponent extends JComponent {
         if (needsRepaint) {
             this.repaint();
         }
+    }
+
+    private boolean isInRectangleBetweenPoints(Position position, Position corner1, Position corner2) {
+        return position.x() >= Math.min(corner1.x(), corner2.x()) &&
+                position.y() >= Math.min(corner1.y(), corner2.y()) &&
+                position.x() < Math.max(corner1.x(), corner2.x()) &&
+                position.y() < Math.max(corner1.y(), corner2.y());
+    }
+
+    private void addLinksBetweenVertices(List<Vertex> vertices) {
+        List<Link> linksToAdd;
+        do {
+            linksToAdd = model.getLinks().stream()
+                    .filter(link -> !vertices.contains(link) && vertices.contains(link.getOrigin()) && vertices.contains(link.getDestination()))
+                    .toList();
+            vertices.addAll(linksToAdd);
+        } while (!linksToAdd.isEmpty());
     }
 
     private void reactToKey(KeyEvent event) {
