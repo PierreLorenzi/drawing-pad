@@ -3,9 +3,9 @@ package fr.alphonse.drawingpad.view;
 import fr.alphonse.drawingpad.data.Example;
 import fr.alphonse.drawingpad.data.geometry.Position;
 import fr.alphonse.drawingpad.data.geometry.Vector;
-import fr.alphonse.drawingpad.model.Link;
-import fr.alphonse.drawingpad.model.Object;
-import fr.alphonse.drawingpad.model.Vertex;
+import fr.alphonse.drawingpad.data.model.Link;
+import fr.alphonse.drawingpad.data.model.Object;
+import fr.alphonse.drawingpad.data.model.Vertex;
 
 import javax.swing.*;
 import java.awt.*;

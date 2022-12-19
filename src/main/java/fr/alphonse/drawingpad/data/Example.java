@@ -1,8 +1,8 @@
 package fr.alphonse.drawingpad.data;
 
 import fr.alphonse.drawingpad.data.geometry.Position;
-import fr.alphonse.drawingpad.model.Object;
-import fr.alphonse.drawingpad.model.Link;
+import fr.alphonse.drawingpad.data.model.Object;
+import fr.alphonse.drawingpad.data.model.Link;
 
 import java.util.ArrayList;
 import java.util.HashMap;

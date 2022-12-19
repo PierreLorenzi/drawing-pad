@@ -1,13 +1,14 @@
-package fr.alphonse.drawingpad.data;
+package fr.alphonse.drawingpad.document.utils;
 
+import fr.alphonse.drawingpad.data.Example;
 import fr.alphonse.drawingpad.data.geometry.Position;
 import fr.alphonse.drawingpad.data.json.ExampleJson;
 import fr.alphonse.drawingpad.data.json.LinkJson;
 import fr.alphonse.drawingpad.data.json.ObjectJson;
 import fr.alphonse.drawingpad.data.json.PositionJson;
-import fr.alphonse.drawingpad.model.Link;
-import fr.alphonse.drawingpad.model.Object;
-import fr.alphonse.drawingpad.model.Vertex;
+import fr.alphonse.drawingpad.data.model.Link;
+import fr.alphonse.drawingpad.data.model.Object;
+import fr.alphonse.drawingpad.data.model.Vertex;
 import org.mapstruct.*;
 
 import java.util.List;

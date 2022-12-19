@@ -1,4 +1,4 @@
-package fr.alphonse.drawingpad.model;
+package fr.alphonse.drawingpad.data.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -10,10 +10,10 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
-@EqualsAndHashCode(of = "id")
-public sealed class Vertex permits Object, Link {
+@EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
+public final class Object extends Vertex {
 
-    private String id;
+    private Space space;
 
-    private String name;
+    private java.lang.Object value;
 }

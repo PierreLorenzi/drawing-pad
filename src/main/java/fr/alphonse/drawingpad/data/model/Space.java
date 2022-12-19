@@ -1,4 +1,4 @@
-package fr.alphonse.drawingpad.model;
+package fr.alphonse.drawingpad.data.model;
 
 
 public enum Space {

@@ -1,68 +1,42 @@
 package fr.alphonse.drawingpad;
 
-import fr.alphonse.drawingpad.data.Document;
-import fr.alphonse.drawingpad.view.DrawingComponent;
+import fr.alphonse.drawingpad.document.Document;
+import fr.alphonse.drawingpad.document.utils.DocumentUtils;
 
 import javax.swing.*;
-import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 public class DrawingPadApplication {
 
     private static int untitledDocumentIndex = 1;
 
-    private static final String FILE_ICON = "\uD83D\uDCC4";
+    private static final List<Document> documents = new ArrayList<>();
 
     public static void main(String[] args) {
         System.setProperty("apple.laf.useScreenMenuBar", "true");
         System.setProperty("apple.awt.application.name", "Drawing Pad");
-        openNewDocument();
+        createNewDocument();
     }
 
-    private static void openNewDocument() {
-        openDocumentWithContent(new Document());
+    private static void createNewDocument() {
+        String windowName = "Untitled " + untitledDocumentIndex++;
+        var document = new Document(windowName);
+        displayDocument(document);
     }
 
-    private static void chooseDocumentToOpen(JFrame frame) {
-        var path = chooseDocument(frame, JFileChooser.OPEN_DIALOG);
-        if (path == null) {
-            return;
-        }
-        openDocument(path);
+    private static void displayDocument(Document document) {
+        documents.add(document);
+        var menuBar = makeMenuBar(document);
+        document.displayWindow(menuBar);
+        document.addCloseListener(() -> documents.removeIf(d -> d == document));
     }
 
-    private static Path chooseDocument(JFrame frame, int mode) {
-        var chooser = new JFileChooser();
-        chooser.setFileSelectionMode(mode);
-        FileNameExtensionFilter filter = new FileNameExtensionFilter(
-                "JSON", "json");
-        chooser.setFileFilter(filter);
-        chooser.setCurrentDirectory(Path.of("/Users/lorenzi/Pierre/IA/Documents").toFile());
-        int returnVal = ((mode & JFileChooser.SAVE_DIALOG) != 0) ? chooser.showSaveDialog(frame) : chooser.showOpenDialog(frame);
-        if(returnVal == JFileChooser.APPROVE_OPTION) {
-            var file = chooser.getSelectedFile();
-            return file.toPath();
-        }
-        else {
-            return null;
-        }
-    }
-
-    private static void openDocument(Path path) {
-        try {
-            openDocumentWithContent(new Document(path));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private static void openDocumentWithContent(Document document) {
-        JFrame frame = new JFrame();
-        frame.setTitle(findDocumentTitle(document));
-
+    private static JMenuBar makeMenuBar(Document document) {
         // Création du menu
         JMenuBar mb = new JMenuBar();
         JMenu m = new JMenu("File");  // Fichier
@@ -70,59 +44,39 @@ public class DrawingPadApplication {
 
         var newFileMenuItem = new JMenuItem("New Document");
         newFileMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_N, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
-        newFileMenuItem.addActionListener(event -> openNewDocument());
+        newFileMenuItem.addActionListener(event -> createNewDocument());
         m.add(newFileMenuItem);
 
         var menuItem = new JMenuItem("Open Document...");
         menuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
-        menuItem.addActionListener(event -> chooseDocumentToOpen(frame));
+        menuItem.addActionListener(event -> openDocument());
         m.add(menuItem);
 
         var saveMenuItem = new JMenuItem("Save");
         saveMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
-        saveMenuItem.addActionListener(event -> {
-            if (document.getPath() == null) {
-                Path path = chooseDocument(frame, JFileChooser.SAVE_DIALOG);
-                if (path == null) {
-                    return;
-                }
-                document.setPath(path);
-            }
-            try {
-                document.save();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        });
+        saveMenuItem.addActionListener(event -> document.save());
         m.add(saveMenuItem);
 
         m.addSeparator();
 
         var closeMenuItem = new JMenuItem("Close");
         closeMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_W, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
-        closeMenuItem.addActionListener(event -> frame.setVisible(false));
+        closeMenuItem.addActionListener(event -> document.close());
         m.add(closeMenuItem);
 
-        DrawingComponent drawingComponent = new DrawingComponent();
-        drawingComponent.setBounds(0, 0, 500, 600);
-        drawingComponent.setModel(document.getExample());
-        frame.add(drawingComponent); // adding button in JFrame
-        frame.setSize(500, 600); // 400 width and 500 height
-        frame.setLayout(null); // using no layout managers
-        frame.setJMenuBar(mb);
-        frame.setVisible(true); // making the frame visible
+        return mb;
     }
 
-    private static String findDocumentTitle(Document document) {
-        Path path = document.getPath();
+    private static void openDocument() {
+        Path path = DocumentUtils.chooseFile(null, JFileChooser.OPEN_DIALOG);
         if (path == null) {
-            return "Untitled " + untitledDocumentIndex++;
+            return;
         }
-        String fileName = path.getFileName().toString();
-        int dotIndex = fileName.lastIndexOf('.');
-        if (dotIndex != -1) {
-            return FILE_ICON + " " + fileName.substring(0, dotIndex);
+        try {
+            Document document = new Document(path);
+            displayDocument(document);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        return FILE_ICON + " " + fileName;
     }
 }

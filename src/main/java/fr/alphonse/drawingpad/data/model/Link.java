@@ -1,4 +1,4 @@
-package fr.alphonse.drawingpad.model;
+package fr.alphonse.drawingpad.data.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
