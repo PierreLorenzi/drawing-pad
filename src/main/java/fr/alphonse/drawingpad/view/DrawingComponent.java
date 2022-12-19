@@ -35,6 +35,10 @@ public class DrawingComponent extends JComponent {
 
     private Position selectionRectangleDestination = null;
 
+    private final List<Integer> guidesX = new ArrayList<>();
+
+    private final List<Integer> guidesY = new ArrayList<>();
+
     private static final int OBJECT_RECTANGLE_RADIUS = 6;
 
     private static final int OBJECT_RADIUS = 8;
@@ -87,6 +91,10 @@ public class DrawingComponent extends JComponent {
                 }
                 DrawingComponent.this.selectionRectangleOrigin = null;
                 DrawingComponent.this.selectionRectangleDestination = null;
+                if (!DrawingComponent.this.guidesX.isEmpty() || !DrawingComponent.this.guidesY.isEmpty()) {
+                    DrawingComponent.this.repaint();
+                }
+                DrawingComponent.this.clearGuides();
                 if (!hasDragged && lastSelectedVertex != null && DrawingComponent.this.selectedVertices.size() > 1 && (event.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) == 0) {
                     DrawingComponent.this.selectedVertices.removeIf(Predicate.not(Predicate.isEqual(lastSelectedVertex)));
                     DrawingComponent.this.repaint();
@@ -152,6 +160,14 @@ public class DrawingComponent extends JComponent {
             var width = Math.abs(selectionRectangleOrigin.x() - selectionRectangleDestination.x());
             var height = Math.abs(selectionRectangleOrigin.y() - selectionRectangleDestination.y());
             g.fillRect(originX, originY, width, height);
+        }
+
+        g.setColor(Color.blue);
+        for (Integer guideX: guidesX) {
+            g.drawLine(guideX, -translationY, guideX, translationY);
+        }
+        for (Integer guideY: guidesY) {
+            g.drawLine(-translationX, guideY, translationX, guideY);
         }
 
         g.setColor(Color.BLACK);
@@ -392,6 +408,7 @@ public class DrawingComponent extends JComponent {
             }
         }
         if (needsRepaint) {
+            fillGuides();
             this.repaint();
         }
     }
@@ -413,6 +430,35 @@ public class DrawingComponent extends JComponent {
         } while (!linksToAdd.isEmpty());
     }
 
+    private void fillGuides() {
+        List<Position> selectedPositions = selectedVertices.stream()
+                .filter(vertex -> vertex instanceof Object)
+                .map(vertex -> (Object)vertex)
+                .map(model.getPositions()::get)
+                .toList();
+        this.guidesX.clear();
+        this.guidesX.addAll(this.model.getObjects().stream()
+                .filter(Predicate.not(selectedVertices::contains))
+                .map(model.getPositions()::get)
+                .map(Position::x)
+                .filter(x -> selectedPositions.stream().anyMatch(position -> position.x() == x))
+                .distinct()
+                .toList());
+        this.guidesY.clear();
+        this.guidesY.addAll(this.model.getObjects().stream()
+                .filter(Predicate.not(selectedVertices::contains))
+                .map(model.getPositions()::get)
+                .map(Position::y)
+                .filter(y -> selectedPositions.stream().anyMatch(position -> position.y() == y))
+                .distinct()
+                .toList());
+    }
+
+    private void clearGuides() {
+        this.guidesX.clear();
+        this.guidesY.clear();
+    }
+
     private void reactToKey(KeyEvent event) {
         switch (event.getKeyCode()) {
             case KeyEvent.VK_UP -> moveSelectedVertexBy(ARROW_KEY_UP_DELTA);
@@ -431,6 +477,12 @@ public class DrawingComponent extends JComponent {
             }
         }
         if (needsRefresh) {
+            fillGuides();
+            Timer timer = new Timer(300, action -> {
+                DrawingComponent.this.clearGuides();
+                DrawingComponent.this.repaint();
+            });
+            timer.start();
             this.repaint();
         }
     }
