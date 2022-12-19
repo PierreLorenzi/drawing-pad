@@ -73,6 +73,8 @@ public class DrawingComponent extends JComponent {
 
     private static final Color SELECTION_COLOR = Color.getHSBColor(206f/360, 1f, .9f);
 
+    private static final int GUIDE_MAGNETISM_RADIUS = 3;
+
     public DrawingComponent() {
         super();
         setBackground(Color.WHITE);
@@ -412,6 +414,18 @@ public class DrawingComponent extends JComponent {
             }
         }
         if (needsRepaint) {
+            List<Integer> nearbyGuidesX = findNearbyGuideDeltas(Position::x);
+            List<Integer> nearbyGuidesY = findNearbyGuideDeltas(Position::y);
+            if (Math.max(nearbyGuidesX.size(), nearbyGuidesY.size()) >= 1) {
+                int deltaX = nearbyGuidesX.isEmpty() ? 0 : nearbyGuidesX.get(0);
+                int deltaY = nearbyGuidesY.isEmpty() ? 0 : nearbyGuidesY.get(0);
+                Vector magnetismVector = new Vector(deltaX, deltaY);
+                for (Vertex selectedVertex: selectedVertices) {
+                    if (selectedVertex instanceof Object object) {
+                        model.getPositions().put(object, model.getPositions().get(object).translate(magnetismVector));
+                    }
+                }
+            }
             fillGuides();
             this.repaint();
         }
@@ -432,6 +446,23 @@ public class DrawingComponent extends JComponent {
                     .toList();
             vertices.addAll(linksToAdd);
         } while (!linksToAdd.isEmpty());
+    }
+
+    private List<Integer> findNearbyGuideDeltas(Function<Position, Integer> coordinate) {
+        List<Position> selectedPositions = selectedVertices.stream()
+                .filter(vertex -> vertex instanceof Object)
+                .map(vertex -> (Object)vertex)
+                .map(model.getPositions()::get)
+                .toList();
+        return this.model.getObjects().stream()
+                .filter(Predicate.not(selectedVertices::contains))
+                .map(model.getPositions()::get)
+                .map(coordinate)
+                .flatMap(value -> selectedPositions.stream().map(position -> value - coordinate.apply(position)))
+                .filter(delta -> Math.abs(delta) <= GUIDE_MAGNETISM_RADIUS)
+                .distinct()
+                .sorted()
+                .toList();
     }
 
     private void fillGuides() {
