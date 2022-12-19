@@ -65,6 +65,8 @@ public class DrawingComponent extends JComponent {
 
     private static final Vector ARROW_KEY_RIGHT_DELTA = new Vector(ARROW_KEY_DELTA, 0);
 
+    private static final Color SELECTION_COLOR = Color.getHSBColor(206f/360, 1f, .9f);
+
     public DrawingComponent() {
         super();
         setBackground(Color.WHITE);
@@ -164,7 +166,7 @@ public class DrawingComponent extends JComponent {
             ((Graphics2D)g).setStroke(BASIC_STROKE);
 
             if (selectedVertices.contains(object)) {
-                g.setColor(Color.RED);
+                g.setColor(SELECTION_COLOR);
             }
             else {
                 g.setColor(Color.BLACK);
@@ -174,7 +176,7 @@ public class DrawingComponent extends JComponent {
 
         for (Link link: model.getLinks()) {
             if (selectedVertices.contains(link)) {
-                g.setColor(Color.RED);
+                g.setColor(SELECTION_COLOR);
             }
             else {
                 g.setColor(Color.BLACK);
