@@ -10,16 +10,25 @@ import fr.alphonse.drawingpad.model.Vertex;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class DrawingComponent extends JComponent {
     private Example model;
 
-    private Vertex selectedVertex;
+    private final java.util.List<Vertex> selectedVertices = new ArrayList<>();
 
-    private Vector dragRelativeVector;
+    private Map<Object, Vector> dragRelativeVectors;
+
+    private boolean canDrag = false;
+
+    private boolean hasDragged = false;
+
+    private Vertex lastSelectedVertex = null;
 
     private static final int OBJECT_RECTANGLE_RADIUS = 6;
 
@@ -65,8 +74,11 @@ public class DrawingComponent extends JComponent {
             }
 
             @Override
-            public void mouseReleased(MouseEvent e) {
-
+            public void mouseReleased(MouseEvent event) {
+                if (!hasDragged && lastSelectedVertex != null && DrawingComponent.this.selectedVertices.size() > 1 && (event.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) == 0) {
+                    DrawingComponent.this.selectedVertices.removeIf(Predicate.not(Predicate.isEqual(lastSelectedVertex)));
+                    DrawingComponent.this.repaint();
+                }
             }
 
             @Override
@@ -132,7 +144,7 @@ public class DrawingComponent extends JComponent {
             g.drawLine(position.x()+OBJECT_RECTANGLE_RADIUS, position.y()-OBJECT_RECTANGLE_RADIUS+2, position.x()+OBJECT_RECTANGLE_RADIUS, position.y()+OBJECT_RECTANGLE_RADIUS);
             ((Graphics2D)g).setStroke(BASIC_STROKE);
 
-            if (object == selectedVertex) {
+            if (selectedVertices.contains(object)) {
                 g.setColor(Color.RED);
             }
             else {
@@ -142,7 +154,7 @@ public class DrawingComponent extends JComponent {
         }
 
         for (Link link: model.getLinks()) {
-            if (link == selectedVertex) {
+            if (selectedVertices.contains(link)) {
                 g.setColor(Color.RED);
             }
             else {
@@ -247,14 +259,29 @@ public class DrawingComponent extends JComponent {
         g.drawLine(position.x(), position.y(), arrowPosition2.x(), arrowPosition2.y());
     }
 
-
-
     private void reactToClick(MouseEvent event) {
         var position = new Position(event.getX() - this.getBounds().width/2, event.getY() - this.getBounds().height/2);
-        this.selectedVertex = findVertexAtPosition(position);
-        if (this.selectedVertex != null && this.selectedVertex instanceof Object object) {
-            var objectPosition = model.getPositions().get(object);
-            this.dragRelativeVector = Vector.between(position, objectPosition);
+        var selectedVertex = findVertexAtPosition(position);
+        this.lastSelectedVertex = selectedVertex;
+        boolean isShiftKeyPressed = (event.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) != 0;
+        boolean alreadySelected = selectedVertex != null && selectedVertices.contains(selectedVertex);
+        this.canDrag = !(isShiftKeyPressed && (selectedVertex == null || alreadySelected));
+        this.hasDragged = false;
+        if (alreadySelected && isShiftKeyPressed) {
+            selectedVertices.remove(selectedVertex);
+        }
+        if (!isShiftKeyPressed && !alreadySelected) {
+            DrawingComponent.this.selectedVertices.clear();
+        }
+        if (selectedVertex != null && !alreadySelected) {
+            this.selectedVertices.add(selectedVertex);
+        }
+        this.dragRelativeVectors = this.selectedVertices.stream()
+                .filter(vertex -> vertex instanceof Object)
+                .map(vertex -> (Object)vertex)
+                .collect(Collectors.toMap(Function.identity(), object -> Vector.between(position, model.getPositions().get(object))));
+        if (alreadySelected && !isShiftKeyPressed) {
+            return;
         }
         this.repaint();
     }
@@ -317,9 +344,19 @@ public class DrawingComponent extends JComponent {
     }
 
     private void reactToDrag(MouseEvent event) {
-        if (this.selectedVertex != null && this.selectedVertex instanceof Object object) {
-            var position = new Position(event.getX() - this.getBounds().width/2, event.getY() - this.getBounds().height/2);
-            model.getPositions().put(object, position.translate(this.dragRelativeVector));
+        if (!canDrag) {
+            return;
+        }
+        this.hasDragged = true;
+        var position = new Position(event.getX() - this.getBounds().width/2, event.getY() - this.getBounds().height/2);
+        boolean needsRepaint = false;
+        for (Vertex selectedVertex: selectedVertices) {
+            if (selectedVertex instanceof Object object) {
+                model.getPositions().put(object, position.translate(this.dragRelativeVectors.get(object)));
+                needsRepaint = true;
+            }
+        }
+        if (needsRepaint) {
             this.repaint();
         }
     }
@@ -334,8 +371,14 @@ public class DrawingComponent extends JComponent {
     }
 
     private void moveSelectedVertexBy(Vector delta) {
-        if (this.selectedVertex != null && this.selectedVertex instanceof Object object) {
-            this.model.getPositions().put(object, this.model.getPositions().get(object).translate(delta));
+        boolean needsRefresh = false;
+        for (Vertex selectedVertex: selectedVertices) {
+            if (selectedVertex instanceof Object object) {
+                this.model.getPositions().put(object, this.model.getPositions().get(object).translate(delta));
+                needsRefresh = true;
+            }
+        }
+        if (needsRefresh) {
             this.repaint();
         }
     }
