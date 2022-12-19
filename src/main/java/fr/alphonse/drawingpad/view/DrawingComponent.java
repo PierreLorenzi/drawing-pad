@@ -39,21 +39,23 @@ public class DrawingComponent extends JComponent {
 
     private final List<Integer> guidesY = new ArrayList<>();
 
-    private static final int OBJECT_RECTANGLE_RADIUS = 6;
+    private static final int OBJECT_RECTANGLE_RADIUS = 8;
 
-    private static final int OBJECT_RADIUS = 8;
+    private static final int OBJECT_RADIUS = 10;
 
     private static final double ARROW_ANGLE = Math.toRadians(25);
 
-    private static final double ARROW_LENGTH = 10;
+    private static final double ARROW_LENGTH = 13;
 
-    private static final BasicStroke SHADOW_STROKE = new BasicStroke(2);
+    private static final BasicStroke SHADOW_STROKE = new BasicStroke(3);
+
+    private static final BasicStroke SELECTED_LINK_STROKE = new BasicStroke(3);
 
     private static final BasicStroke BASIC_STROKE = new BasicStroke(1);
 
     private static final double LOOP_ANGLE = Math.toRadians(23);
 
-    private static final int LOOP_LENGTH = 20;
+    private static final int LOOP_LENGTH = 25;
 
     private static final int LOOP_CIRCLE_RADIUS = (int)(LOOP_LENGTH * Math.tan(LOOP_ANGLE));
 
@@ -193,9 +195,11 @@ public class DrawingComponent extends JComponent {
         for (Link link: model.getLinks()) {
             if (selectedVertices.contains(link)) {
                 g.setColor(SELECTION_COLOR);
+                ((Graphics2D)g).setStroke(SELECTED_LINK_STROKE);
             }
             else {
                 g.setColor(Color.BLACK);
+                ((Graphics2D)g).setStroke(BASIC_STROKE);
             }
             if (isLoop(link)) {
                 drawLoop(findVertexPosition(link.getOrigin()), link.getOrigin(), g);
