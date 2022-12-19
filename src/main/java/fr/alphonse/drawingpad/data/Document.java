@@ -44,4 +44,18 @@ public class Document {
     public Example getExample() {
         return example;
     }
+
+    public Path getPath() {
+        return path;
+    }
+
+    public void setPath(Path path) {
+        this.path = path;
+    }
+
+    public void save() throws IOException {
+        JsonDataMapper mapper = Mappers.getMapper(JsonDataMapper.class);
+        ExampleJson json = mapper.mapToJson(example);
+        new JsonMapper().writeValue(path.toFile(), json);
+    }
 }

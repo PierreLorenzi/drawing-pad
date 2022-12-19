@@ -1,16 +1,14 @@
 package fr.alphonse.drawingpad.data;
 
 import fr.alphonse.drawingpad.data.geometry.Position;
+import fr.alphonse.drawingpad.data.json.ExampleJson;
 import fr.alphonse.drawingpad.data.json.LinkJson;
 import fr.alphonse.drawingpad.data.json.ObjectJson;
 import fr.alphonse.drawingpad.data.json.PositionJson;
 import fr.alphonse.drawingpad.model.Link;
 import fr.alphonse.drawingpad.model.Object;
 import fr.alphonse.drawingpad.model.Vertex;
-import org.mapstruct.AfterMapping;
-import org.mapstruct.Context;
-import org.mapstruct.Mapper;
-import org.mapstruct.MappingTarget;
+import org.mapstruct.*;
 
 import java.util.List;
 import java.util.Map;
@@ -37,5 +35,11 @@ public interface JsonDataMapper {
 
     default Object mapObjectReference(String id, @Context List<Object> objects) {
         return objects.stream().filter(object -> object.getId().equals(id)).findFirst().get();
+    }
+
+    ExampleJson mapToJson(Example example);
+
+    default String mapToObjectReference(Vertex v) {
+        return v.getId();
     }
 }
