@@ -1,31 +1,25 @@
 package fr.alphonse.drawingpad.data;
 
 import fr.alphonse.drawingpad.data.geometry.Position;
-import fr.alphonse.drawingpad.data.model.Object;
 import fr.alphonse.drawingpad.data.model.Link;
+import fr.alphonse.drawingpad.data.model.Object;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class Example {
 
-    private final List<Object> objects = new ArrayList<>();
+    private Map<Object.Id, Object> objects = new HashMap<>();
 
-    private final List<Link> links = new ArrayList<>();
+    private Map<Link.Id, Link> links = new HashMap<>();
 
-    private final Map<Object, Position> positions = new HashMap<>();
-
-    public List<Object> getObjects() {
-        return objects;
-    }
-
-    public List<Link> getLinks() {
-        return links;
-    }
-
-    public Map<Object, Position> getPositions() {
-        return positions;
-    }
+    private Map<Object.Id, Position> positions = new HashMap<>();
 }

@@ -2,24 +2,22 @@ package fr.alphonse.drawingpad.document;
 
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import fr.alphonse.drawingpad.data.Example;
-import fr.alphonse.drawingpad.data.geometry.Position;
-import fr.alphonse.drawingpad.data.json.ExampleJson;
+import fr.alphonse.drawingpad.data.ExampleJson;
 import fr.alphonse.drawingpad.data.model.Link;
 import fr.alphonse.drawingpad.data.model.Object;
 import fr.alphonse.drawingpad.data.model.Vertex;
 import fr.alphonse.drawingpad.document.utils.DocumentUtils;
-import fr.alphonse.drawingpad.document.utils.JsonDataMapper;
 import fr.alphonse.drawingpad.view.DrawingComponent;
-import org.mapstruct.factory.Mappers;
 
 import javax.swing.*;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class Document {
 
@@ -47,15 +45,16 @@ public class Document {
     private static void importFile(Path path, Example example) throws IOException {
         ExampleJson json = new JsonMapper().readValue(path.toFile(), ExampleJson.class);
 
-        JsonDataMapper mapper = Mappers.getMapper(JsonDataMapper.class);
-        List<Object> objects = mapper.mapObjects(json.getObjects());
-        List<Vertex> vertices = new ArrayList<>(objects);
-        List<Link> links = mapper.mapLinks(json.getLinks(), vertices);
-        Map<Object, Position> positions = mapper.mapPositions(json.getPositions(), objects);
+        // correct links
+        Map<Vertex.Id, Vertex> vertexMap = Stream.concat(json.getObjects().stream(), json.getLinks().stream()).collect(Collectors.toMap(Vertex::getId, Function.identity()));
+        for (Link link: json.getLinks()) {
+            link.setOriginId(vertexMap.get(link.getOriginId()).getId());
+            link.setDestinationId(vertexMap.get(link.getDestinationId()).getId());
+        }
 
-        example.getObjects().addAll(objects);
-        example.getLinks().addAll(links);
-        example.getPositions().putAll(positions);
+        example.setObjects(json.getObjects().stream().collect(Collectors.toMap(Object::getId, Function.identity())));
+        example.setLinks(json.getLinks().stream().collect(Collectors.toMap(Link::getId, Function.identity())));
+        example.setPositions(json.getPositions().entrySet().stream().collect(Collectors.toMap(entry -> json.getObjects().stream().map(Object::getId).filter(id -> id.getString().equals(entry.getKey().getString())).findFirst().get(), Map.Entry::getValue)));
     }
 
     public void addCloseListener(Runnable callback) {
@@ -140,22 +139,33 @@ public class Document {
     }
 
     public void save() {
+        if (this.path != null) {
+            writeFile();
+            return;
+        }
+
         Path savePath = DocumentUtils.chooseFile(this.frame, JFileChooser.SAVE_DIALOG);
         if (savePath == null) {
             return;
         }
 
-        JsonDataMapper mapper = Mappers.getMapper(JsonDataMapper.class);
-        ExampleJson json = mapper.mapToJson(model);
-        try {
-            new JsonMapper().writeValue(savePath.toFile(), json);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return;
-        }
-
         this.path = savePath;
         this.frame.setTitle(findWindowName());
+
+        writeFile();
+    }
+
+    public void writeFile() {
+        ExampleJson json = ExampleJson.builder()
+                .objects(model.getObjects().values().stream().toList())
+                .links(model.getLinks().values().stream().toList())
+                .positions(model.getPositions())
+                .build();
+        try {
+            new JsonMapper().writeValue(path.toFile(), json);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public void close() {
