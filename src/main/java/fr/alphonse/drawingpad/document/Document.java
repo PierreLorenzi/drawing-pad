@@ -46,6 +46,8 @@ public class Document {
 
     private Runnable closeListener;
 
+    private boolean wasModifiedSinceLastSave = false;
+
     private static final String FILE_ICON = "\uD83D\uDCC4";
 
     public Document(String windowName) {
@@ -124,6 +126,16 @@ public class Document {
         }
         Example currentModel = copyModel(model);
         previousModels.add(currentModel);
+        changeModifiedFlag(true);
+    }
+
+    private void changeModifiedFlag(boolean newValue) {
+        if (newValue == wasModifiedSinceLastSave) {
+            return;
+        }
+        wasModifiedSinceLastSave = newValue;
+        String displayName = (wasModifiedSinceLastSave ? windowName + "*" : windowName);
+        frame.setTitle(displayName);
     }
 
     public void addCloseListener(Runnable callback) {
@@ -134,8 +146,8 @@ public class Document {
         frame = new JFrame();
         frame.setJMenuBar(menuBar);
 
-        var name = findWindowName();
-        frame.setTitle(name);
+        windowName = findWindowName();
+        frame.setTitle(windowName);
 
         drawingComponent = new DrawingComponent(model, changeDetector);
         drawingComponent.setBounds(0, 0, 500, 600);
@@ -206,7 +218,10 @@ public class Document {
         return FILE_ICON + " " + fileName;
     }
 
-    public void cancel() {
+    public void undo() {
+        if (previousModelIndex == null && previousModels.size() == 1) {
+            return;
+        }
         if (previousModelIndex == null) {
             previousModelIndex = previousModels.size() - 1;
         }
@@ -215,6 +230,9 @@ public class Document {
         }
         previousModelIndex -= 1;
         changeModel(copyModel(previousModels.get(previousModelIndex)));
+        if (previousModelIndex == 0) {
+            changeModifiedFlag(false);
+        }
     }
 
     private void changeModel(Example model) {
@@ -233,9 +251,15 @@ public class Document {
         if (previousModelIndex == previousModels.size()-1) {
             previousModelIndex = null;
         }
+        changeModifiedFlag(true);
     }
 
     public void save() {
+        changeModifiedFlag(false);
+        previousModelIndex = null;
+        previousModels.clear();
+        previousModels.add(copyModel(model));
+
         if (this.path != null) {
             writeFile();
             return;

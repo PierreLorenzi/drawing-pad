@@ -69,9 +69,9 @@ public class DrawingPadApplication {
         JMenu editMenu = new JMenu("Edit");
         mb.add(editMenu);
 
-        var cancelMenuItem = new JMenuItem("Cancel");
+        var cancelMenuItem = new JMenuItem("Undo");
         cancelMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
-        cancelMenuItem.addActionListener(event -> document.cancel());
+        cancelMenuItem.addActionListener(event -> document.undo());
         editMenu.add(cancelMenuItem);
 
         var redoMenuItem = new JMenuItem("Redo");
