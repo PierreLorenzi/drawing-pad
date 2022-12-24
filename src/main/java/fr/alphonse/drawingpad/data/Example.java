@@ -8,18 +8,17 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.HashMap;
 import java.util.Map;
 
 @Data
-@Builder
+@Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class Example {
 
-    private Map<Object.Id, Object> objects = new HashMap<>();
+    private Map<Object.Id, Object> objects;
 
-    private Map<Link.Id, Link> links = new HashMap<>();
+    private Map<Link.Id, Link> links;
 
-    private Map<Object.Id, Position> positions = new HashMap<>();
+    private Map<Object.Id, Position> positions;
 }

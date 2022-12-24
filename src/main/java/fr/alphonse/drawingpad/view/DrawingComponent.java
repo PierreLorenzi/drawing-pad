@@ -6,6 +6,7 @@ import fr.alphonse.drawingpad.data.geometry.Vector;
 import fr.alphonse.drawingpad.data.model.Link;
 import fr.alphonse.drawingpad.data.model.Object;
 import fr.alphonse.drawingpad.data.model.Vertex;
+import fr.alphonse.drawingpad.document.utils.ChangeDetector;
 
 import javax.swing.*;
 import javax.swing.Timer;
@@ -18,7 +19,10 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class DrawingComponent extends JComponent {
+
     private Example model;
+
+    private final ChangeDetector changeDetector;
 
     private final java.util.List<Vertex.Id> selectedVertices = new ArrayList<>();
 
@@ -27,6 +31,8 @@ public class DrawingComponent extends JComponent {
     private boolean canDrag = false;
 
     private boolean hasDragged = false;
+
+    private boolean hasDraggedObjects = false;
 
     private Vertex lastSelectedVertex = null;
 
@@ -74,8 +80,10 @@ public class DrawingComponent extends JComponent {
 
     private static final int GUIDE_MAGNETISM_RADIUS = 3;
 
-    public DrawingComponent() {
+    public DrawingComponent(Example model, ChangeDetector changeDetector) {
         super();
+        this.model = model;
+        this.changeDetector = changeDetector;
         setBackground(Color.WHITE);
         addMouseListener(new MouseListener() {
             @Override
@@ -101,6 +109,9 @@ public class DrawingComponent extends JComponent {
                 if (!hasDragged && lastSelectedVertex != null && DrawingComponent.this.selectedVertices.size() > 1 && (event.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) == 0) {
                     DrawingComponent.this.selectedVertices.removeIf(Predicate.not(Predicate.isEqual(lastSelectedVertex.getId())));
                     DrawingComponent.this.repaint();
+                }
+                if (hasDraggedObjects) {
+                    changeDetector.notifyChange();
                 }
             }
 
@@ -144,8 +155,10 @@ public class DrawingComponent extends JComponent {
         this.setFocusable(true);
     }
 
-    public void setModel(Example model) {
+    public void changeModel(Example model) {
         this.model = model;
+        this.changeDetector.reinitModel(model);
+        this.repaint();
     }
 
     @Override
@@ -310,6 +323,7 @@ public class DrawingComponent extends JComponent {
         boolean alreadySelected = selectedVertex != null && selectedVertices.contains(selectedVertex.getId());
         this.canDrag = !(isShiftKeyPressed && (selectedVertex == null || alreadySelected));
         this.hasDragged = false;
+        this.hasDraggedObjects = false;
         if (alreadySelected && isShiftKeyPressed) {
             selectedVertices.remove(selectedVertex.getId());
         }
@@ -424,6 +438,7 @@ public class DrawingComponent extends JComponent {
             }
             fillGuides();
             this.repaint();
+            this.hasDraggedObjects = true;
         }
     }
 
@@ -516,6 +531,7 @@ public class DrawingComponent extends JComponent {
             });
             timer.start();
             this.repaint();
+            this.changeDetector.notifyChange();
         }
     }
 }

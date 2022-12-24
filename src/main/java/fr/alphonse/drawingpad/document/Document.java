@@ -1,11 +1,14 @@
 package fr.alphonse.drawingpad.document;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import fr.alphonse.drawingpad.data.Example;
 import fr.alphonse.drawingpad.data.ExampleJson;
+import fr.alphonse.drawingpad.data.geometry.Position;
 import fr.alphonse.drawingpad.data.model.Link;
 import fr.alphonse.drawingpad.data.model.Object;
 import fr.alphonse.drawingpad.data.model.Vertex;
+import fr.alphonse.drawingpad.document.utils.ChangeDetector;
 import fr.alphonse.drawingpad.document.utils.DocumentUtils;
 import fr.alphonse.drawingpad.view.DrawingComponent;
 
@@ -13,7 +16,11 @@ import javax.swing.*;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.IOException;
+import java.lang.ref.SoftReference;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -21,7 +28,13 @@ import java.util.stream.Stream;
 
 public class Document {
 
-    private final Example model = new Example();
+    private Example model;
+
+    private final ChangeDetector changeDetector;
+
+    private final List<Example> previousModels = new ArrayList<>();
+
+    private Integer previousModelIndex;
 
     private String windowName;
 
@@ -29,21 +42,36 @@ public class Document {
 
     private JFrame frame;
 
+    private DrawingComponent drawingComponent;
+
     private Runnable closeListener;
 
     private static final String FILE_ICON = "\uD83D\uDCC4";
 
     public Document(String windowName) {
+        this.model = Example.builder()
+                .objects(new HashMap<>())
+                .links(new HashMap<>())
+                .positions(new HashMap<>())
+                .build();
+        this.changeDetector = new ChangeDetector(model);
         this.windowName = windowName;
+        listenToChanges();
     }
 
     public Document(Path path) throws IOException {
         this.path = path;
-        importFile(path, model);
+        this.model = importFile(path);
+        this.changeDetector = new ChangeDetector(model);
+        listenToChanges();
     }
 
-    private static void importFile(Path path, Example example) throws IOException {
+    private static Example importFile(Path path) throws IOException {
         ExampleJson json = new JsonMapper().readValue(path.toFile(), ExampleJson.class);
+        return mapJsonToModel(json);
+    }
+
+    private static Example mapJsonToModel(ExampleJson json) throws IOException {
 
         // correct links
         Map<Vertex.Id, Vertex> vertexMap = Stream.concat(json.getObjects().stream(), json.getLinks().stream()).collect(Collectors.toMap(Vertex::getId, Function.identity()));
@@ -52,9 +80,50 @@ public class Document {
             link.setDestinationId(vertexMap.get(link.getDestinationId()).getId());
         }
 
-        example.setObjects(json.getObjects().stream().collect(Collectors.toMap(Object::getId, Function.identity())));
-        example.setLinks(json.getLinks().stream().collect(Collectors.toMap(Link::getId, Function.identity())));
-        example.setPositions(json.getPositions().entrySet().stream().collect(Collectors.toMap(entry -> json.getObjects().stream().map(Object::getId).filter(id -> id.getString().equals(entry.getKey().getString())).findFirst().get(), Map.Entry::getValue)));
+        Map<Object.Id, Object> objects = json.getObjects().stream().collect(Collectors.toMap(Object::getId, Function.identity()));
+        Map<Link.Id, Link> links = json.getLinks().stream().collect(Collectors.toMap(Link::getId, Function.identity()));
+        Map<Object.Id, Position> positions = json.getPositions().entrySet().stream().collect(Collectors.toMap(entry -> json.getObjects().stream().map(Object::getId).filter(id -> id.getString().equals(entry.getKey().getString())).findFirst().get(), Map.Entry::getValue));
+
+        return Example.builder()
+                .objects(objects)
+                .links(links)
+                .positions(positions)
+                .build();
+    }
+
+    private void listenToChanges() {
+        this.previousModels.add(copyModel(model));
+        var thisReference = new SoftReference<>(this);
+        changeDetector.addListener(() -> {
+            var thisDocument = thisReference.get();
+            if (thisDocument == null) {
+                return false;
+            }
+            thisDocument.reactToChange();
+            return true;
+        });
+    }
+
+    private static Example copyModel(Example model) {
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        try {
+            ExampleJson jsonContentInput = mapModelToJson(model);
+            String jsonString = objectMapper.writeValueAsString(jsonContentInput);
+            ExampleJson jsonContentOutput = objectMapper.readValue(jsonString, ExampleJson.class);
+            return mapJsonToModel(jsonContentOutput);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void reactToChange() {
+        if (previousModelIndex != null) {
+            previousModels.subList(previousModelIndex+1, previousModels.size()).clear();
+            previousModelIndex = null;
+        }
+        Example currentModel = copyModel(model);
+        previousModels.add(currentModel);
     }
 
     public void addCloseListener(Runnable callback) {
@@ -68,9 +137,8 @@ public class Document {
         var name = findWindowName();
         frame.setTitle(name);
 
-        DrawingComponent drawingComponent = new DrawingComponent();
+        drawingComponent = new DrawingComponent(model, changeDetector);
         drawingComponent.setBounds(0, 0, 500, 600);
-        drawingComponent.setModel(model);
         frame.add(drawingComponent); // adding button in JFrame
         frame.setSize(500, 600); // 400 width and 500 height
         frame.setLayout(null); // using no layout managers
@@ -138,6 +206,35 @@ public class Document {
         return FILE_ICON + " " + fileName;
     }
 
+    public void cancel() {
+        if (previousModelIndex == null) {
+            previousModelIndex = previousModels.size() - 1;
+        }
+        if (previousModelIndex == 0) {
+            return;
+        }
+        previousModelIndex -= 1;
+        changeModel(copyModel(previousModels.get(previousModelIndex)));
+    }
+
+    private void changeModel(Example model) {
+        this.model = model;
+        this.changeDetector.reinitModel(model);
+        drawingComponent.changeModel(model);
+    }
+
+
+    public void redo() {
+        if (previousModelIndex == null) {
+            return;
+        }
+        previousModelIndex += 1;
+        changeModel(copyModel(previousModels.get(previousModelIndex)));
+        if (previousModelIndex == previousModels.size()-1) {
+            previousModelIndex = null;
+        }
+    }
+
     public void save() {
         if (this.path != null) {
             writeFile();
@@ -156,16 +253,20 @@ public class Document {
     }
 
     public void writeFile() {
-        ExampleJson json = ExampleJson.builder()
-                .objects(model.getObjects().values().stream().toList())
-                .links(model.getLinks().values().stream().toList())
-                .positions(model.getPositions())
-                .build();
+        ExampleJson json = mapModelToJson(model);
         try {
             new JsonMapper().writeValue(path.toFile(), json);
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private static ExampleJson mapModelToJson(Example model) {
+        return ExampleJson.builder()
+                .objects(model.getObjects().values().stream().toList())
+                .links(model.getLinks().values().stream().toList())
+                .positions(model.getPositions())
+                .build();
     }
 
     public void close() {

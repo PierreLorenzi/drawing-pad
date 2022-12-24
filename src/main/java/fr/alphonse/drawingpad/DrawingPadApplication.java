@@ -5,6 +5,7 @@ import fr.alphonse.drawingpad.document.utils.DocumentUtils;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -39,6 +40,7 @@ public class DrawingPadApplication {
     private static JMenuBar makeMenuBar(Document document) {
         // Création du menu
         JMenuBar mb = new JMenuBar();
+
         JMenu m = new JMenu("File");  // Fichier
         mb.add(m);
 
@@ -63,6 +65,19 @@ public class DrawingPadApplication {
         closeMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_W, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
         closeMenuItem.addActionListener(event -> document.close());
         m.add(closeMenuItem);
+
+        JMenu editMenu = new JMenu("Edit");
+        mb.add(editMenu);
+
+        var cancelMenuItem = new JMenuItem("Cancel");
+        cancelMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
+        cancelMenuItem.addActionListener(event -> document.cancel());
+        editMenu.add(cancelMenuItem);
+
+        var redoMenuItem = new JMenuItem("Redo");
+        redoMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx() | InputEvent.SHIFT_DOWN_MASK));
+        redoMenuItem.addActionListener(event -> document.redo());
+        editMenu.add(redoMenuItem);
 
         return mb;
     }
