@@ -48,8 +48,6 @@ public class Document {
 
     private boolean wasModifiedSinceLastSave = false;
 
-    private static final String FILE_ICON = "\uD83D\uDCC4";
-
     public Document(String windowName) {
         this.model = Example.builder()
                 .objects(new HashMap<>())
@@ -200,7 +198,7 @@ public class Document {
 
     private String findWindowName() {
         if (path != null) {
-            return findPathWindowName(path);
+            return DocumentUtils.findPathWindowName(path);
         }
         if (windowName != null) {
             return windowName;
@@ -208,14 +206,8 @@ public class Document {
         return "";
     }
 
-    private String findPathWindowName(Path path) {
-
-        String fileName = path.getFileName().toString();
-        int dotIndex = fileName.lastIndexOf('.');
-        if (dotIndex != -1) {
-            return FILE_ICON + " " + fileName.substring(0, dotIndex);
-        }
-        return FILE_ICON + " " + fileName;
+    public void moveToFront() {
+        frame.toFront();
     }
 
     public void undo() {

@@ -8,6 +8,7 @@ import java.awt.*;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.io.IOException;
+import java.lang.ref.SoftReference;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,7 +17,11 @@ public class DrawingPadApplication {
 
     private static int untitledDocumentIndex = 1;
 
-    private static final List<Document> documents = new ArrayList<>();
+    private static final List<DocumentRecord> documents = new ArrayList<>();
+
+    private static final List<SoftReference<JMenu>> recentFileMenus = new ArrayList<>();
+
+    private record DocumentRecord(Document document, Path path) {}
 
     public static void main(String[] args) {
         System.setProperty("apple.laf.useScreenMenuBar", "true");
@@ -27,14 +32,14 @@ public class DrawingPadApplication {
     private static void createNewDocument() {
         String windowName = "Untitled " + untitledDocumentIndex++;
         var document = new Document(windowName);
-        displayDocument(document);
+        displayDocument(document, null);
     }
 
-    private static void displayDocument(Document document) {
-        documents.add(document);
+    private static void displayDocument(Document document, Path path) {
+        documents.add(new DocumentRecord(document, path));
         var menuBar = makeMenuBar(document);
         document.displayWindow(menuBar);
-        document.addCloseListener(() -> documents.removeIf(d -> d == document));
+        document.addCloseListener(() -> documents.removeIf(d -> d.document == document));
     }
 
     private static JMenuBar makeMenuBar(Document document) {
@@ -53,6 +58,11 @@ public class DrawingPadApplication {
         menuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
         menuItem.addActionListener(event -> openDocument());
         m.add(menuItem);
+
+        JMenu recentFileMenu = new JMenu("Recent Files");
+        recentFileMenus.add(new SoftReference<>(recentFileMenu));
+        refreshRecentFiles();
+        m.add(recentFileMenu);
 
         var saveMenuItem = new JMenuItem("Save");
         saveMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
@@ -87,11 +97,60 @@ public class DrawingPadApplication {
         if (path == null) {
             return;
         }
+        openDocumentAtPath(path);
+    }
+
+    private static void openDocumentAtPath(Path path) {
+        Document openedDocument = findOpenedDocumentWithPath(path);
+        if (openedDocument != null) {
+            openedDocument.moveToFront();
+            return;
+        }
         try {
             Document document = new Document(path);
-            displayDocument(document);
+            displayDocument(document, path);
+            DocumentUtils.addToRecentFiles(path);
+            refreshRecentFiles();
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private static Document findOpenedDocumentWithPath(Path path) {
+        return documents.stream()
+                .filter(record -> path.equals(record.path))
+                .map(DocumentRecord::document)
+                .findFirst().orElse(null);
+    }
+
+    private static void refreshRecentFiles() {
+        recentFileMenus.removeIf(reference -> reference.get() == null);
+
+        List<Path> recentFiles = DocumentUtils.findRecentFiles();
+
+        for (SoftReference<JMenu> menuReference: recentFileMenus) {
+            JMenu menu = menuReference.get();
+            if (menu == null) {
+                continue;
+            }
+            menu.removeAll();
+            for (Path path: recentFiles) {
+                String name = DocumentUtils.findPathWindowName(path);
+                var menuItem = new JMenuItem(name);
+                menuItem.addActionListener(event -> openDocumentAtPath(path));
+                menu.add(menuItem);
+            }
+
+            menu.addSeparator();
+            var clearMenuItem = new JMenuItem("Clear menu");
+            clearMenuItem.setEnabled(!recentFiles.isEmpty());
+            clearMenuItem.addActionListener(event -> clearRecentFiles());
+            menu.add(clearMenuItem);
+        }
+    }
+
+    private static void clearRecentFiles() {
+        DocumentUtils.clearRecentFiles();
+        refreshRecentFiles();
     }
 }
