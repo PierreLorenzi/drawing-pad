@@ -21,6 +21,8 @@ public class DrawingPadApplication {
 
     private static final List<SoftReference<JMenu>> recentFileMenus = new ArrayList<>();
 
+    private static JFrame ghostFrame = null;
+
     private record DocumentRecord(Document document, Path path) {}
 
     public static void main(String[] args) {
@@ -39,7 +41,7 @@ public class DrawingPadApplication {
         documents.add(new DocumentRecord(document, path));
         var menuBar = makeMenuBar(document);
         document.displayWindow(menuBar);
-        document.addCloseListener(() -> documents.removeIf(d -> d.document == document));
+        document.addCloseListener(frame -> closeFrame(frame, document));
     }
 
     private static JMenuBar makeMenuBar(Document document) {
@@ -111,6 +113,7 @@ public class DrawingPadApplication {
             displayDocument(document, path);
             DocumentUtils.addToRecentFiles(path);
             refreshRecentFiles();
+            disposeGhostFrameIfNecessary();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -152,5 +155,25 @@ public class DrawingPadApplication {
     private static void clearRecentFiles() {
         DocumentUtils.clearRecentFiles();
         refreshRecentFiles();
+    }
+
+    private static void disposeGhostFrameIfNecessary() {
+        if (ghostFrame == null) {
+            return;
+        }
+        ghostFrame.dispose();
+        ghostFrame = null;
+    }
+
+    private static void closeFrame(JFrame frame, Document document) {
+        documents.removeIf(d -> d.document == document);
+
+        if (documents.isEmpty()) {
+            frame.setVisible(false);
+            ghostFrame = frame;
+            return;
+        }
+
+        frame.dispose();
     }
 }

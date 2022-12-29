@@ -18,10 +18,8 @@ import java.awt.event.WindowListener;
 import java.io.IOException;
 import java.lang.ref.SoftReference;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -44,7 +42,7 @@ public class Document {
 
     private DrawingComponent drawingComponent;
 
-    private Runnable closeListener;
+    private Consumer<JFrame> closeListener;
 
     private boolean wasModifiedSinceLastSave = false;
 
@@ -136,7 +134,7 @@ public class Document {
         frame.setTitle(displayName);
     }
 
-    public void addCloseListener(Runnable callback) {
+    public void addCloseListener(Consumer<JFrame> callback) {
         this.closeListener = callback;
     }
 
@@ -153,6 +151,7 @@ public class Document {
         frame.setSize(500, 600); // 400 width and 500 height
         frame.setLayout(null); // using no layout managers
         frame.setJMenuBar(menuBar);
+        frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 
         frame.addWindowListener(new WindowListener() {
             @Override
@@ -162,10 +161,20 @@ public class Document {
 
             @Override
             public void windowClosing(WindowEvent e) {
-                if (Document.this.closeListener != null) {
-                    Document.this.closeListener.run();
+                if (previousModels.size() > 1 && !Objects.equals(previousModelIndex, 0)) {
+                    int response = JOptionPane.showConfirmDialog(frame, "Do you want to save changes before closing?");
+                    switch (response) {
+                        case JOptionPane.CANCEL_OPTION, JOptionPane.CLOSED_OPTION:
+                            return;
+                        case JOptionPane.OK_OPTION:
+                            Document.this.save();
+                        default:
+                            break;
+                    }
                 }
-
+                if (Document.this.closeListener != null) {
+                    Document.this.closeListener.accept(frame);
+                }
             }
 
             @Override
