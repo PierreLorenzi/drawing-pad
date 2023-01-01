@@ -13,12 +13,14 @@ import fr.alphonse.drawingpad.document.utils.DocumentUtils;
 import fr.alphonse.drawingpad.view.DrawingComponent;
 
 import javax.swing.*;
+import java.awt.*;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.IOException;
 import java.lang.ref.SoftReference;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -145,11 +147,12 @@ public class Document {
         windowName = findWindowName();
         frame.setTitle(windowName);
 
+        frame.setLayout(new BorderLayout());
+
         drawingComponent = new DrawingComponent(model, changeDetector);
         drawingComponent.setBounds(0, 0, 500, 600);
-        frame.add(drawingComponent); // adding button in JFrame
+        frame.add(drawingComponent, BorderLayout.CENTER); // adding button in JFrame
         frame.setSize(500, 600); // 400 width and 500 height
-        frame.setLayout(null); // using no layout managers
         frame.setJMenuBar(menuBar);
         frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 
