@@ -1,6 +1,7 @@
 package fr.alphonse.drawingpad.view.internal;
 
 import fr.alphonse.drawingpad.data.Example;
+import fr.alphonse.drawingpad.data.geometry.Position;
 import fr.alphonse.drawingpad.data.model.Link;
 import fr.alphonse.drawingpad.data.model.Object;
 import fr.alphonse.drawingpad.data.model.Vertex;
@@ -11,6 +12,66 @@ import java.util.List;
 
 @UtilityClass
 public class ModelHandler {
+
+    public static void addObject(Position position, Example example) {
+        Object object = makeObject(example);
+        example.getObjects().put(object.getId(), object);
+        example.getPositions().put(object.getId(), position);
+    }
+
+    private static Object makeObject(Example example) {
+        var object = new Object();
+        var id = findAvailableObjectId(example);
+        object.setId(id);
+        id.setState(object);
+        return object;
+    }
+
+    private static Object.Id findAvailableObjectId(Example example) {
+        int maxId = example.getObjects().keySet().stream()
+                .mapToInt(Object.Id::getValue)
+                .max()
+                .orElse(0);
+        return new Object.Id(1 + maxId);
+    }
+
+    public boolean addLink(Vertex origin, Vertex destination, Example example) {
+        if (doesLinkExistWithObjects(origin, destination, example)) {
+            return false;
+        }
+        Link link = makeLink(origin, destination, example);
+        example.getLinks().put(link.getId(), link);
+        return true;
+    }
+
+    private static boolean doesLinkExistWithObjects(Vertex origin, Vertex destination, Example example) {
+        // no link between the objects in either side
+        return doesLinkExistWithOriginAndDestination(origin, destination, example)
+                || doesLinkExistWithOriginAndDestination(destination, origin, example);
+    }
+
+    private static boolean doesLinkExistWithOriginAndDestination(Vertex origin, Vertex destination, Example example) {
+        return example.getLinks().values().stream()
+                .anyMatch(link -> link.getOriginId().equals(origin.getId()) && link.getDestinationId().equals(destination.getId()));
+    }
+
+    private static Link makeLink(Vertex origin, Vertex destination, Example example) {
+        var link = new Link();
+        var id = findAvailableLinkId(example);
+        link.setId(id);
+        id.setState(link);
+        link.setOrigin(origin);
+        link.setDestination(destination);
+        return link;
+    }
+
+    private static Link.Id findAvailableLinkId(Example example) {
+        int minId = example.getLinks().keySet().stream()
+                .mapToInt(Link.Id::getValue)
+                .min()
+                .orElse(0);
+        return new Link.Id(minId - 1);
+    }
 
     public static void deleteObject(Object.Id id, Example example) {
         List<Link.Id> linkIds = listVertexLinks(id, example);

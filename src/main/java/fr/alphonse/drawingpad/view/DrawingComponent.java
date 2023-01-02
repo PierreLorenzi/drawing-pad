@@ -41,6 +41,8 @@ public class DrawingComponent extends JComponent {
 
     private Position selectionRectangleDestination = null;
 
+    private Vertex newLinkOrigin = null;
+
     private final List<Integer> guidesX = new ArrayList<>();
 
     private final List<Integer> guidesY = new ArrayList<>();
@@ -85,6 +87,7 @@ public class DrawingComponent extends JComponent {
         super();
         this.model = model;
         this.changeDetector = changeDetector;
+        changeDetector.addListener(this, DrawingComponent::repaint);
         setBackground(Color.WHITE);
         addMouseListener(new MouseListener() {
             @Override
@@ -107,6 +110,23 @@ public class DrawingComponent extends JComponent {
                     DrawingComponent.this.repaint();
                 }
                 DrawingComponent.this.clearGuides();
+                if (DrawingComponent.this.newLinkOrigin != null) {
+                    Position position = findEventPosition(event);
+                    var destination = findVertexAtPosition(position);
+                    var origin = DrawingComponent.this.newLinkOrigin;
+                    DrawingComponent.this.newLinkOrigin = null;
+                    if (destination != null) {
+                        if (ModelHandler.addLink(origin, destination, model)) {
+                            changeDetector.notifyChange();
+                        }
+                        else {
+                            DrawingComponent.this.repaint();
+                        }
+                    }
+                    else {
+                        DrawingComponent.this.repaint();
+                    }
+                }
                 if (!hasDragged && lastSelectedVertex != null && DrawingComponent.this.selectedVertices.size() > 1 && (event.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) == 0) {
                     DrawingComponent.this.selectedVertices.removeIf(Predicate.not(Predicate.isEqual(lastSelectedVertex.getId())));
                     DrawingComponent.this.repaint();
@@ -172,7 +192,6 @@ public class DrawingComponent extends JComponent {
         this.selectedVertices.clear();
         lastSelectedVertex = null;
         this.changeDetector.notifyChange();
-        this.repaint();
     }
 
     @Override
@@ -242,7 +261,21 @@ public class DrawingComponent extends JComponent {
             drawArrow(linePosition2, position1, g);
         }
 
+        // draw link being dragged
+        if (newLinkOrigin != null) {
+            var position1 = findVertexPosition(newLinkOrigin);
+            Position position2 = findMousePosition();
+            g.drawLine(position1.x(), position1.y(), position2.x(), position2.y());
+        }
+
         g.translate(-translationX, -translationY);
+    }
+
+    private Position findMousePosition() {
+        Point mousePoint = MouseInfo.getPointerInfo().getLocation();
+        Point point = new Point(mousePoint);
+        SwingUtilities.convertPointFromScreen(point, this);
+        return findPointPosition(point);
     }
 
     private static boolean isLoop(Link link) {
@@ -327,8 +360,19 @@ public class DrawingComponent extends JComponent {
     }
 
     private void reactToClick(MouseEvent event) {
-        var position = new Position(event.getX() - this.getBounds().width/2, event.getY() - this.getBounds().height/2);
+        Position position = findEventPosition(event);
         var selectedVertex = findVertexAtPosition(position);
+        // if press with command, add object
+        if ((event.getModifiersEx() & Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()) != 0) {
+            ModelHandler.addObject(position, model);
+            changeDetector.notifyChange();
+            return;
+        }
+        // if press with option, add link
+        if ((event.getModifiersEx() & KeyEvent.ALT_DOWN_MASK) != 0) {
+            newLinkOrigin = selectedVertex;
+            return;
+        }
         this.lastSelectedVertex = selectedVertex;
         boolean isShiftKeyPressed = (event.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) != 0;
         if (selectedVertex == null && !isShiftKeyPressed) {
@@ -355,6 +399,14 @@ public class DrawingComponent extends JComponent {
             return;
         }
         this.repaint();
+    }
+
+    private Position findEventPosition(MouseEvent event) {
+        return findPointPosition(event.getPoint());
+    }
+
+    private Position findPointPosition(Point point) {
+        return new Position(point.x - this.getBounds().width/2, point.y - this.getBounds().height/2);
     }
 
     private Vertex findVertexAtPosition(Position position) {
@@ -414,7 +466,12 @@ public class DrawingComponent extends JComponent {
     }
 
     private void reactToDrag(MouseEvent event) {
-        var position = new Position(event.getX() - this.getBounds().width/2, event.getY() - this.getBounds().height/2);
+        // if a new linked is dragged, just repaint
+        if (newLinkOrigin != null) {
+            this.repaint();
+            return;
+        }
+        Position position = findEventPosition(event);
         if (selectionRectangleOrigin != null) {
             this.selectionRectangleDestination = position;
             List<Object.Id> objectsInRectangle = model.getObjects().keySet().stream()
@@ -544,7 +601,6 @@ public class DrawingComponent extends JComponent {
                 DrawingComponent.this.repaint();
             });
             timer.start();
-            this.repaint();
             this.changeDetector.notifyChange();
         }
     }

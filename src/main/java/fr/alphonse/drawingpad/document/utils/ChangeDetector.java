@@ -3,8 +3,7 @@ package fr.alphonse.drawingpad.document.utils;
 import java.lang.ref.SoftReference;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.BooleanSupplier;
-import java.util.function.Predicate;
+import java.util.function.Consumer;
 
 public class ChangeDetector {
 
@@ -14,9 +13,11 @@ public class ChangeDetector {
 
     private final List<SoftReference<ChangeDetector>> children = new ArrayList<>();
 
-    private final List<BooleanSupplier> listeners = new ArrayList<>();
+    private final List<ListenerReference<?>> listenerReferences = new ArrayList<>();
 
     private int oldHashcode;
+
+    private record ListenerReference<T>(SoftReference<T> reference, Consumer<T> action) {}
 
     public ChangeDetector(Object model) {
         this(model, null);
@@ -28,8 +29,9 @@ public class ChangeDetector {
         this.oldHashcode = model.hashCode();
     }
 
-    public void addListener(BooleanSupplier listener) {
-        listeners.add(listener);
+    public <T> void addListener(T listener, Consumer<T> action) {
+        var listenerReference = new ListenerReference<>(new SoftReference<>(listener), action);
+        listenerReferences.add(listenerReference);
     }
 
     public void notifyChange() {
@@ -49,10 +51,21 @@ public class ChangeDetector {
             }
             child.notifyChange(this);
         }
-        listeners.removeIf(Predicate.not(BooleanSupplier::getAsBoolean));
+        for (ListenerReference<?> listenerReference: listenerReferences) {
+            callListener(listenerReference);
+        }
+        listenerReferences.removeIf(listenerReference -> listenerReference.reference.get() == null);
         if (parent != null && parent != origin) {
             parent.notifyChange(this);
         }
+    }
+
+    private static <T> void callListener(ListenerReference<T> listenerReference) {
+        var target = listenerReference.reference.get();
+        if (target == null) {
+            return;
+        }
+        listenerReference.action.accept(target);
     }
 
     public ChangeDetector makeSubDetector(Object submodel) {

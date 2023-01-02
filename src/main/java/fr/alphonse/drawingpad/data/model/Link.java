@@ -61,5 +61,9 @@ public final class Link extends Vertex {
         public Link state() {
             return state;
         }
+
+        public void setState(Link state) {
+            this.state = state;
+        }
     }
 }

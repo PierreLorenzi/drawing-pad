@@ -17,10 +17,9 @@ import java.awt.*;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.IOException;
-import java.lang.ref.SoftReference;
 import java.nio.file.Path;
-import java.util.*;
 import java.util.List;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -93,15 +92,7 @@ public class Document {
 
     private void listenToChanges() {
         this.previousModels.add(copyModel(model));
-        var thisReference = new SoftReference<>(this);
-        changeDetector.addListener(() -> {
-            var thisDocument = thisReference.get();
-            if (thisDocument == null) {
-                return false;
-            }
-            thisDocument.reactToChange();
-            return true;
-        });
+        changeDetector.addListener(this, Document::reactToChange);
     }
 
     private static Example copyModel(Example model) {

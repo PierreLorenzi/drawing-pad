@@ -38,5 +38,9 @@ public final class Object extends Vertex {
         public Object state() {
             return state;
         }
+
+        public void setState(Object state) {
+            this.state = state;
+        }
     }
 }
