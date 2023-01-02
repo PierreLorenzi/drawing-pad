@@ -18,23 +18,28 @@ public sealed abstract class Vertex permits Object, Link {
     private String name;
 
     public static sealed abstract class Id permits Object.Id, Link.Id {
-        private final String string;
+        private final int value;
 
-        protected Id(String string) {
-            this.string = string;
+        protected Id(int value) {
+            this.value = value;
         }
 
         @JsonCreator
         public static Vertex.Id makeVertexId(String string) {
-            if (string.charAt(0) == '-') {
-                return new Link.Id(string);
+            int value = Integer.parseInt(string);
+            if (value < 0) {
+                return new Link.Id(value);
             }
-            return new Object.Id(string);
+            return new Object.Id(value);
         }
 
         @JsonValue
         public String getString() {
-            return string;
+            return "" + value;
+        }
+
+        public int getValue() {
+            return value;
         }
 
         public abstract Vertex state();
@@ -44,12 +49,12 @@ public sealed abstract class Vertex permits Object, Link {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             Vertex.Id id = (Vertex.Id) o;
-            return getString().equals(id.getString());
+            return value == id.value;
         }
 
         @Override
         public int hashCode() {
-            return getString().hashCode();
+            return value;
         }
     }
 }

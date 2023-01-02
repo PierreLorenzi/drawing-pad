@@ -24,8 +24,12 @@ public final class Object extends Vertex {
 
     public static final class Id extends Vertex.Id {
 
+        public Id(int value) {
+            super(value);
+        }
+
         public Id(String string) {
-            super(string);
+            super(Integer.parseInt(string));
         }
 
         @JsonBackReference

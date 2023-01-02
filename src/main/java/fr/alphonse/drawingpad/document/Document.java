@@ -82,7 +82,7 @@ public class Document {
 
         Map<Object.Id, Object> objects = json.getObjects().stream().collect(Collectors.toMap(Object::getId, Function.identity()));
         Map<Link.Id, Link> links = json.getLinks().stream().collect(Collectors.toMap(Link::getId, Function.identity()));
-        Map<Object.Id, Position> positions = json.getPositions().entrySet().stream().collect(Collectors.toMap(entry -> json.getObjects().stream().map(Object::getId).filter(id -> id.getString().equals(entry.getKey().getString())).findFirst().get(), Map.Entry::getValue));
+        Map<Object.Id, Position> positions = json.getPositions().entrySet().stream().collect(Collectors.toMap(entry -> json.getObjects().stream().map(Object::getId).filter(id -> id.getValue() == entry.getKey().getValue()).findFirst().get(), Map.Entry::getValue));
 
         return Example.builder()
                 .objects(objects)
