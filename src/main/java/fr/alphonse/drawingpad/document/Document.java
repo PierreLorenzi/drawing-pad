@@ -222,6 +222,10 @@ public class Document {
         frame.toFront();
     }
 
+    public void delete() {
+        this.drawingComponent.delete();
+    }
+
     public void undo() {
         if (previousModelIndex == null && previousModels.size() == 1) {
             return;

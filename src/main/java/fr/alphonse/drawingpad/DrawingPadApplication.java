@@ -91,6 +91,13 @@ public class DrawingPadApplication {
         redoMenuItem.addActionListener(event -> document.redo());
         editMenu.add(redoMenuItem);
 
+        editMenu.addSeparator();
+
+        var deleteMenuItem = new JMenuItem("Delete");
+        deleteMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0));
+        deleteMenuItem.addActionListener(event -> document.delete());
+        editMenu.add(deleteMenuItem);
+
         return mb;
     }
 

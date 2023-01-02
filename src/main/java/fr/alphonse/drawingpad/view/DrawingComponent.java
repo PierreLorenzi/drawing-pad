@@ -7,6 +7,7 @@ import fr.alphonse.drawingpad.data.model.Link;
 import fr.alphonse.drawingpad.data.model.Object;
 import fr.alphonse.drawingpad.data.model.Vertex;
 import fr.alphonse.drawingpad.document.utils.ChangeDetector;
+import fr.alphonse.drawingpad.view.internal.ModelHandler;
 
 import javax.swing.*;
 import javax.swing.Timer;
@@ -158,6 +159,19 @@ public class DrawingComponent extends JComponent {
     public void changeModel(Example model) {
         this.model = model;
         this.changeDetector.reinitModel(model);
+        this.repaint();
+    }
+
+    public void delete() {
+        for (Vertex.Id selectedVertex: selectedVertices) {
+            switch (selectedVertex) {
+                case Object.Id objectId -> ModelHandler.deleteObject(objectId, model);
+                case Link.Id linkId -> ModelHandler.deleteLink(linkId, model);
+            }
+        }
+        this.selectedVertices.clear();
+        lastSelectedVertex = null;
+        this.changeDetector.notifyChange();
         this.repaint();
     }
 
