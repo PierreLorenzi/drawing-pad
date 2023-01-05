@@ -18,10 +18,6 @@ public final class Object extends Vertex {
     @JsonManagedReference
     private Object.Id id;
 
-    private Space space;
-
-    private java.lang.Object value;
-
     public static final class Id extends Vertex.Id {
 
         public Id(int value) {
