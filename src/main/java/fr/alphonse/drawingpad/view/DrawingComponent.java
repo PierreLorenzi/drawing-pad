@@ -27,6 +27,8 @@ public class DrawingComponent extends JComponent {
 
     private final java.util.List<Vertex.Id> selectedVertices = new ArrayList<>();
 
+    private final ChangeDetector selectionChangeDetector = new ChangeDetector(selectedVertices);
+
     private Map<Object.Id, Vector> dragRelativeVectors;
 
     private boolean canDrag = false;
@@ -130,6 +132,7 @@ public class DrawingComponent extends JComponent {
                 if (!hasDragged && lastSelectedVertex != null && DrawingComponent.this.selectedVertices.size() > 1 && (event.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) == 0) {
                     DrawingComponent.this.selectedVertices.removeIf(Predicate.not(Predicate.isEqual(lastSelectedVertex.getId())));
                     DrawingComponent.this.repaint();
+                    DrawingComponent.this.selectionChangeDetector.notifyChange();
                 }
                 if (hasDraggedObjects) {
                     changeDetector.notifyChange();
@@ -182,6 +185,14 @@ public class DrawingComponent extends JComponent {
         this.repaint();
     }
 
+    public java.util.List<Vertex.Id> getSelection() {
+        return selectedVertices;
+    }
+
+    public ChangeDetector getSelectionChangeDetector() {
+        return selectionChangeDetector;
+    }
+
     public void delete() {
         for (Vertex.Id selectedVertex: selectedVertices) {
             switch (selectedVertex) {
@@ -190,6 +201,7 @@ public class DrawingComponent extends JComponent {
             }
         }
         this.selectedVertices.clear();
+        this.selectionChangeDetector.notifyChange();
         lastSelectedVertex = null;
         this.changeDetector.notifyChange();
     }
@@ -384,12 +396,15 @@ public class DrawingComponent extends JComponent {
         this.hasDraggedObjects = false;
         if (alreadySelected && isShiftKeyPressed) {
             selectedVertices.remove(selectedVertex.getId());
+            this.selectionChangeDetector.notifyChange();
         }
         if (!isShiftKeyPressed && !alreadySelected) {
             DrawingComponent.this.selectedVertices.clear();
+            this.selectionChangeDetector.notifyChange();
         }
         if (selectedVertex != null && !alreadySelected) {
             this.selectedVertices.add(selectedVertex.getId());
+            this.selectionChangeDetector.notifyChange();
         }
         this.dragRelativeVectors = this.selectedVertices.stream()
                 .filter(vertex -> vertex instanceof Object.Id)
@@ -480,6 +495,7 @@ public class DrawingComponent extends JComponent {
             this.selectedVertices.clear();
             this.selectedVertices.addAll(objectsInRectangle);
             addLinksBetweenVertices(this.selectedVertices);
+            this.selectionChangeDetector.notifyChange();
             this.repaint();
             return;
         }

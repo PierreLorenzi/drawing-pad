@@ -11,6 +11,7 @@ import fr.alphonse.drawingpad.data.model.Vertex;
 import fr.alphonse.drawingpad.document.utils.ChangeDetector;
 import fr.alphonse.drawingpad.document.utils.DocumentUtils;
 import fr.alphonse.drawingpad.view.DrawingComponent;
+import fr.alphonse.drawingpad.view.InfoComponent;
 
 import javax.swing.*;
 import java.awt.*;
@@ -142,8 +143,9 @@ public class Document {
 
         drawingComponent = new DrawingComponent(model, changeDetector);
         drawingComponent.setBounds(0, 0, 500, 600);
-        frame.add(drawingComponent, BorderLayout.CENTER); // adding button in JFrame
-        frame.setSize(500, 600); // 400 width and 500 height
+        frame.add(drawingComponent, BorderLayout.CENTER);
+        frame.add(new InfoComponent(drawingComponent.getSelection(), drawingComponent.getSelectionChangeDetector(), changeDetector), BorderLayout.EAST);
+        frame.setSize(800, 600);
         frame.setJMenuBar(menuBar);
         frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 

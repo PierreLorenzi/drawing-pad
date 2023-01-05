@@ -23,9 +23,9 @@ public final class Link extends Vertex {
 
     private Vertex.Id destinationId;
 
-    private LinkFactor originFactor;
+    private LinkFactor originFactor = new LinkFactor(null, null);
 
-    private LinkFactor destinationFactor;
+    private LinkFactor destinationFactor = new LinkFactor(null, null);
 
     @JsonIgnore
     public Vertex getOrigin() {
