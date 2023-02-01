@@ -5,6 +5,8 @@ import fr.alphonse.drawingpad.data.geometry.Position;
 import fr.alphonse.drawingpad.data.model.Link;
 import fr.alphonse.drawingpad.data.model.Object;
 import fr.alphonse.drawingpad.data.model.Vertex;
+import fr.alphonse.drawingpad.data.model.value.GraduatedValue;
+import fr.alphonse.drawingpad.data.model.value.Value;
 import lombok.experimental.UtilityClass;
 
 import java.util.ArrayList;
@@ -62,6 +64,8 @@ public class ModelHandler {
         id.setState(link);
         link.setOrigin(origin);
         link.setDestination(destination);
+        link.setOriginFactor(makeValue());
+        link.setDestinationFactor(makeValue());
         return link;
     }
 
@@ -71,6 +75,14 @@ public class ModelHandler {
                 .min()
                 .orElse(0);
         return new Link.Id(minId - 1);
+    }
+
+    private static Value makeValue() {
+        var value = new Value();
+        value.setWholeValue(new GraduatedValue<>());
+        value.setLowerValue(new GraduatedValue<>());
+        value.setUpperValue(new GraduatedValue<>());
+        return value;
     }
 
     public static void deleteObject(Object.Id id, Example example) {

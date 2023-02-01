@@ -1,10 +1,13 @@
 package fr.alphonse.drawingpad.view;
 
 import fr.alphonse.drawingpad.data.model.Link;
-import fr.alphonse.drawingpad.data.model.LinkFactor;
 import fr.alphonse.drawingpad.data.model.Object;
 import fr.alphonse.drawingpad.data.model.Vertex;
+import fr.alphonse.drawingpad.data.model.value.LowerGraduation;
+import fr.alphonse.drawingpad.data.model.value.UpperGraduation;
+import fr.alphonse.drawingpad.data.model.value.WholeGraduation;
 import fr.alphonse.drawingpad.document.utils.ChangeDetector;
+import fr.alphonse.drawingpad.view.internal.GraduatedValueComponent;
 
 import javax.swing.*;
 import java.awt.*;
@@ -25,13 +28,17 @@ public class InfoComponent extends JPanel {
 
     private JTextField linkNameField;
 
-    private JTextField linkOriginFactorField;
+    private GraduatedValueComponent<WholeGraduation> originFactorComponent;
 
-    private JTextField linkOriginFactorDeltaField;
+    private GraduatedValueComponent<LowerGraduation> originLowerFactorComponent;
 
-    private JTextField linkDestinationFactorField;
+    private GraduatedValueComponent<UpperGraduation> originUpperFactorComponent;
 
-    private JTextField linkDestinationFactorDeltaField;
+    private GraduatedValueComponent<WholeGraduation> destinationFactorComponent;
+
+    private GraduatedValueComponent<LowerGraduation> destinationLowerFactorComponent;
+
+    private GraduatedValueComponent<UpperGraduation> destinationUpperFactorComponent;
 
     private static final String EMPTY_SELECTION_CARD = "empty";
 
@@ -121,29 +128,12 @@ public class InfoComponent extends JPanel {
         originFactorLabel.setForeground(Color.WHITE);
         originFactorLabel.setHorizontalAlignment(SwingConstants.CENTER);
         panel.add(originFactorLabel);
-        JTextField originFactorField = new JTextField();
-        originFactorField.setMaximumSize(new Dimension(100000, 40));
-        originFactorField.addActionListener(event -> {if (this.selectedLink != null) {
-            this.selectedLink.setOriginFactor(new LinkFactor(Double.parseDouble(originFactorField.getText()), selectedLink.getOriginFactor().delta()));
-            this.modelChangeDetector.notifyChange();
-        }});
-        panel.add(originFactorField);
-        this.linkOriginFactorField = originFactorField;
-
-        // origin factor delta
-        panel.add(Box.createVerticalStrut(30));
-        JLabel originFactorDeltaLabel = new JLabel("Origin Factor Delta:");
-        originFactorDeltaLabel.setForeground(Color.WHITE);
-        originFactorDeltaLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        panel.add(originFactorDeltaLabel);
-        JTextField originFactorDeltaField = new JTextField();
-        originFactorDeltaField.setMaximumSize(new Dimension(100000, 40));
-        originFactorDeltaField.addActionListener(event -> {if (this.selectedLink != null) {
-            this.selectedLink.setOriginFactor(new LinkFactor(selectedLink.getOriginFactor().value(), Double.parseDouble(originFactorDeltaField.getText())));
-            this.modelChangeDetector.notifyChange();
-        }});
-        panel.add(originFactorDeltaField);
-        this.linkOriginFactorDeltaField = originFactorDeltaField;
+        originFactorComponent = new GraduatedValueComponent<>(WholeGraduation.class);
+        panel.add(originFactorComponent);
+        originLowerFactorComponent = new GraduatedValueComponent<>(LowerGraduation.class);
+        panel.add(originLowerFactorComponent);
+        originUpperFactorComponent = new GraduatedValueComponent<>(UpperGraduation.class);
+        panel.add(originUpperFactorComponent);
 
         // destination factor
         panel.add(Box.createVerticalStrut(30));
@@ -151,29 +141,12 @@ public class InfoComponent extends JPanel {
         destinationFactorLabel.setForeground(Color.WHITE);
         destinationFactorLabel.setHorizontalAlignment(SwingConstants.CENTER);
         panel.add(destinationFactorLabel);
-        JTextField destinationFactorField = new JTextField();
-        destinationFactorField.setMaximumSize(new Dimension(100000, 40));
-        destinationFactorField.addActionListener(event -> {if (this.selectedLink != null) {
-            this.selectedLink.setDestinationFactor(new LinkFactor(Double.parseDouble(destinationFactorField.getText()), selectedLink.getDestinationFactor().delta()));
-            this.modelChangeDetector.notifyChange();
-        }});
-        panel.add(destinationFactorField);
-        this.linkDestinationFactorField = destinationFactorField;
-
-        // destination factor delta
-        panel.add(Box.createVerticalStrut(30));
-        JLabel destinationFactorDeltaLabel = new JLabel("Destination Factor Delta:");
-        destinationFactorDeltaLabel.setForeground(Color.WHITE);
-        destinationFactorDeltaLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        panel.add(destinationFactorDeltaLabel);
-        JTextField destinationFactorDeltaField = new JTextField();
-        destinationFactorDeltaField.setMaximumSize(new Dimension(100000, 40));
-        destinationFactorDeltaField.addActionListener(event -> {if (this.selectedLink != null) {
-            this.selectedLink.setDestinationFactor(new LinkFactor(selectedLink.getDestinationFactor().value(), Double.parseDouble(destinationFactorDeltaField.getText())));
-            this.modelChangeDetector.notifyChange();
-        }});
-        panel.add(destinationFactorDeltaField);
-        this.linkDestinationFactorDeltaField = destinationFactorDeltaField;
+        destinationFactorComponent = new GraduatedValueComponent<>(WholeGraduation.class);
+        panel.add(destinationFactorComponent);
+        destinationLowerFactorComponent = new GraduatedValueComponent<>(LowerGraduation.class);
+        panel.add(destinationLowerFactorComponent);
+        destinationUpperFactorComponent = new GraduatedValueComponent<>(UpperGraduation.class);
+        panel.add(destinationUpperFactorComponent);
 
         panel.add(Box.createVerticalGlue());
 
@@ -227,17 +200,11 @@ public class InfoComponent extends JPanel {
         Link link = id.state();
         selectedLink = link;
         linkNameField.setText(link.getName());
-        displayNumberInField(linkOriginFactorField, link.getOriginFactor().value());
-        displayNumberInField(linkOriginFactorDeltaField, link.getOriginFactor().delta());
-        displayNumberInField(linkDestinationFactorField, link.getDestinationFactor().value());
-        displayNumberInField(linkDestinationFactorDeltaField, link.getDestinationFactor().delta());
-    }
-
-    private static void displayNumberInField(JTextField field, Double number) {
-        if (number == null) {
-            field.setText(null);
-            return;
-        }
-        field.setText(number.toString());
+        originFactorComponent.setValue(link.getOriginFactor().getWholeValue());
+        originLowerFactorComponent.setValue(link.getOriginFactor().getLowerValue());
+        originUpperFactorComponent.setValue(link.getOriginFactor().getUpperValue());
+        destinationFactorComponent.setValue(link.getDestinationFactor().getWholeValue());
+        destinationLowerFactorComponent.setValue(link.getDestinationFactor().getLowerValue());
+        destinationUpperFactorComponent.setValue(link.getDestinationFactor().getUpperValue());
     }
 }
