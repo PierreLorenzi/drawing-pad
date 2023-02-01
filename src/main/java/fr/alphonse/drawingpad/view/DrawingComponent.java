@@ -252,7 +252,8 @@ public class DrawingComponent extends JComponent {
         }
 
         for (Link link: model.getLinks().values()) {
-            if (selectedVertices.contains(link.getId())) {
+            boolean isSelected = selectedVertices.contains(link.getId());
+            if (isSelected) {
                 g.setColor(SELECTION_COLOR);
                 ((Graphics2D)g).setStroke(SELECTED_LINK_STROKE);
             }
@@ -270,7 +271,9 @@ public class DrawingComponent extends JComponent {
             var linePosition2 = computeArrowMeetingPositionWithVertex(position1, position2, link.getDestination());
             g.drawLine(linePosition1.x(), linePosition1.y(), linePosition2.x(), linePosition2.y());
 
-            drawArrow(linePosition2, position1, g);
+            if (isSelected) {
+                drawArrow(linePosition2, position1, g);
+            }
         }
 
         // draw link being dragged
@@ -352,8 +355,6 @@ public class DrawingComponent extends JComponent {
         var endDestinationAnchor = computeArrowMeetingPositionWithVertex(endDestination, position, vertex);
         g.drawLine(startDestinationAnchor.x(), startDestinationAnchor.y(), startDestination.x(), startDestination.y());
         g.drawLine(endDestinationAnchor.x(), endDestinationAnchor.y(), endDestination.x(), endDestination.y());
-
-        drawArrow(endDestinationAnchor, endDestination, g);
 
         var centerVector = new Vector(0, -LOOP_CENTER_DISTANCE);
         var center = position.translate(centerVector);
