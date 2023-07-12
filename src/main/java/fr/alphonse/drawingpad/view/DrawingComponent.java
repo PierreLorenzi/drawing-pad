@@ -3,6 +3,7 @@ package fr.alphonse.drawingpad.view;
 import fr.alphonse.drawingpad.data.Example;
 import fr.alphonse.drawingpad.data.geometry.Position;
 import fr.alphonse.drawingpad.data.geometry.Vector;
+import fr.alphonse.drawingpad.data.model.Amount;
 import fr.alphonse.drawingpad.data.model.Link;
 import fr.alphonse.drawingpad.data.model.Object;
 import fr.alphonse.drawingpad.data.model.Vertex;
@@ -84,6 +85,10 @@ public class DrawingComponent extends JComponent {
     private static final Color SELECTION_COLOR = Color.getHSBColor(206f/360, 1f, .9f);
 
     private static final int GUIDE_MAGNETISM_RADIUS = 3;
+
+    private static final Vector AMOUNT_VECTOR = new Vector(26, 0);
+
+    private static final int AMOUNT_RADIUS = 9;
 
     public DrawingComponent(Example model, ChangeDetector changeDetector) {
         super();
@@ -198,6 +203,7 @@ public class DrawingComponent extends JComponent {
             switch (selectedVertex) {
                 case Object.Id objectId -> ModelHandler.deleteObject(objectId, model);
                 case Link.Id linkId -> ModelHandler.deleteLink(linkId, model);
+                case Amount.Id amountId -> ModelHandler.deleteAmount(amountId, model);
             }
         }
         this.selectedVertices.clear();
@@ -233,7 +239,7 @@ public class DrawingComponent extends JComponent {
 
         g.setColor(Color.BLACK);
         Map<Object.Id, Position> positions = model.getPositions();
-        for (Object object: model.getObjects().values()) {
+        for (Object object: model.getGraph().getObjects().values()) {
             var position = positions.get(object.getId());
 
             g.setColor(Color.GRAY);
@@ -251,7 +257,7 @@ public class DrawingComponent extends JComponent {
             g.fillRect(position.x()-OBJECT_RECTANGLE_RADIUS, position.y()-OBJECT_RECTANGLE_RADIUS, 2*OBJECT_RECTANGLE_RADIUS, 2*OBJECT_RECTANGLE_RADIUS);
         }
 
-        for (Link link: model.getLinks().values()) {
+        for (Link link: model.getGraph().getLinks().values()) {
             boolean isSelected = selectedVertices.contains(link.getId());
             if (isSelected) {
                 g.setColor(SELECTION_COLOR);
@@ -274,6 +280,22 @@ public class DrawingComponent extends JComponent {
             if (isSelected) {
                 drawArrow(linePosition2, position1, g);
             }
+        }
+
+        ((Graphics2D)g).setStroke(BASIC_STROKE);
+        for (Amount amount: model.getGraph().getAmounts().values()) {
+            var position = findVertexPosition(amount);
+
+            g.setColor(Color.BLACK);
+            g.drawOval(position.x() - AMOUNT_RADIUS, position.y() - AMOUNT_RADIUS, 2*AMOUNT_RADIUS, 2*AMOUNT_RADIUS);
+
+            if (selectedVertices.contains(amount.getId())) {
+                g.setColor(SELECTION_COLOR);
+            }
+            else {
+                g.setColor(Color.YELLOW);
+            }
+            g.fillOval(position.x() - AMOUNT_RADIUS, position.y() - AMOUNT_RADIUS, 2*AMOUNT_RADIUS, 2*AMOUNT_RADIUS);
         }
 
         // draw link being dragged
@@ -310,6 +332,7 @@ public class DrawingComponent extends JComponent {
                 var position2 = findVertexPosition(link.getDestination());
                 yield Position.middle(position1, position2);
             }
+            case Amount amount -> findVertexPosition(amount.getModel()).translate(AMOUNT_VECTOR);
         };
     }
 
@@ -321,6 +344,7 @@ public class DrawingComponent extends JComponent {
         return switch (vertex) {
             case Object ignored -> computeArrowMeetingPositionWithObject(position1, position2);
             case Link ignored -> position2;
+            case Amount ignored -> computeArrowMeetingPositionWithAmount(position1, position2);
         };
     }
 
@@ -343,6 +367,13 @@ public class DrawingComponent extends JComponent {
                 return new Position(position2.x() + OBJECT_RADIUS * vector.x() / vector.y(), position2.y() + OBJECT_RADIUS);
             }
         }
+    }
+
+    private static Position computeArrowMeetingPositionWithAmount(Position position1, Position position2) {
+        var vector = Vector.between(position1, position2);
+        var distance = vector.length();
+        var arrowVector = vector.multiply((distance - AMOUNT_RADIUS) / distance);
+        return position1.translate(arrowVector);
     }
 
     private void drawLoop(Position position, Vertex vertex, Graphics g) {
@@ -386,6 +417,15 @@ public class DrawingComponent extends JComponent {
             newLinkOrigin = selectedVertex;
             return;
         }
+        // if press with control, add amount
+        if ((event.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0) {
+            if (selectedVertex == null) {
+                return;
+            }
+            ModelHandler.addAmount(selectedVertex, model);
+            changeDetector.notifyChange();
+            return;
+        }
         this.lastSelectedVertex = selectedVertex;
         boolean isShiftKeyPressed = (event.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) != 0;
         if (selectedVertex == null && !isShiftKeyPressed) {
@@ -426,11 +466,15 @@ public class DrawingComponent extends JComponent {
     }
 
     private Vertex findVertexAtPosition(Position position) {
-        Object object = findVertexAtPositionInList(position, model.getObjects().values());
+        Object object = findVertexAtPositionInList(position, model.getGraph().getObjects().values());
         if (object != null) {
             return object;
         }
-        return findVertexAtPositionInList(position, model.getLinks().values());
+        Amount amount = findVertexAtPositionInList(position, model.getGraph().getAmounts().values());
+        if (amount != null) {
+            return amount;
+        }
+        return findVertexAtPositionInList(position, model.getGraph().getLinks().values());
     }
 
     private <T extends Vertex> T findVertexAtPositionInList(Position position, Collection<T> vertices) {
@@ -445,6 +489,7 @@ public class DrawingComponent extends JComponent {
         return switch (vertex) {
             case Object object -> findPositionDistanceFromObject(position, object);
             case Link link -> findPositionDistanceFromLink(position, link);
+            case Amount amount -> findPositionDistanceFromAmount(position, amount);
         };
     }
 
@@ -481,6 +526,12 @@ public class DrawingComponent extends JComponent {
         return (int)distanceFromLine;
     }
 
+    private int findPositionDistanceFromAmount(Position position, Amount amount) {
+        var amountPosition = findVertexPosition(amount);
+        var vector = Vector.between(amountPosition, position);
+        return Math.round(vector.length());
+    }
+
     private void reactToDrag(MouseEvent event) {
         // if a new linked is dragged, just repaint
         if (newLinkOrigin != null) {
@@ -490,7 +541,7 @@ public class DrawingComponent extends JComponent {
         Position position = findEventPosition(event);
         if (selectionRectangleOrigin != null) {
             this.selectionRectangleDestination = position;
-            List<Object.Id> objectsInRectangle = model.getObjects().keySet().stream()
+            List<Object.Id> objectsInRectangle = model.getGraph().getObjects().keySet().stream()
                     .filter(object -> isInRectangleBetweenPoints(model.getPositions().get(object), selectionRectangleOrigin, selectionRectangleDestination))
                     .toList();
             this.selectedVertices.clear();
@@ -539,13 +590,19 @@ public class DrawingComponent extends JComponent {
 
     private void addLinksBetweenVertices(List<Vertex.Id> vertices) {
         List<Link.Id> linksToAdd;
+        List<Amount.Id> amountsToAdd;
         do {
-            linksToAdd = model.getLinks().values().stream()
+            linksToAdd = model.getGraph().getLinks().values().stream()
                     .filter(link -> !vertices.contains(link.getId()) && vertices.contains(link.getOrigin().getId()) && vertices.contains(link.getDestination().getId()))
                     .map(Link::getId)
                     .toList();
+            amountsToAdd = model.getGraph().getAmounts().values().stream()
+                    .filter(amount -> !vertices.contains(amount.getId()) && vertices.contains(amount.getModelId()))
+                    .map(Amount::getId)
+                    .toList();
             vertices.addAll(linksToAdd);
-        } while (!linksToAdd.isEmpty());
+            vertices.addAll(amountsToAdd);
+        } while (!linksToAdd.isEmpty() || !amountsToAdd.isEmpty());
     }
 
     private List<Integer> findNearbyGuideDeltas(Function<Position, Integer> coordinate) {
@@ -554,7 +611,7 @@ public class DrawingComponent extends JComponent {
                 .map(vertex -> (Object.Id)vertex)
                 .map(model.getPositions()::get)
                 .toList();
-        return this.model.getObjects().keySet().stream()
+        return this.model.getGraph().getObjects().keySet().stream()
                 .filter(Predicate.not(selectedVertices::contains))
                 .map(model.getPositions()::get)
                 .map(coordinate)
@@ -572,7 +629,7 @@ public class DrawingComponent extends JComponent {
                 .map(model.getPositions()::get)
                 .toList();
         this.guidesX.clear();
-        this.guidesX.addAll(this.model.getObjects().keySet().stream()
+        this.guidesX.addAll(this.model.getGraph().getObjects().keySet().stream()
                 .filter(Predicate.not(selectedVertices::contains))
                 .map(model.getPositions()::get)
                 .map(Position::x)
@@ -580,7 +637,7 @@ public class DrawingComponent extends JComponent {
                 .distinct()
                 .toList());
         this.guidesY.clear();
-        this.guidesY.addAll(this.model.getObjects().keySet().stream()
+        this.guidesY.addAll(this.model.getGraph().getObjects().keySet().stream()
                 .filter(Predicate.not(selectedVertices::contains))
                 .map(model.getPositions()::get)
                 .map(Position::y)

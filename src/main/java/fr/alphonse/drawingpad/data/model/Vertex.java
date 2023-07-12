@@ -11,14 +11,16 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
-public sealed abstract class Vertex permits Object, Link {
+public sealed abstract class Vertex permits Object, Link, Amount {
 
     public abstract Id getId();
 
     private String name;
 
-    public static sealed abstract class Id permits Object.Id, Link.Id {
+    public static sealed abstract class Id permits Object.Id, Link.Id, Amount.Id {
         private final int value;
+
+        public static final int TYPE_MASK = 0xF_0000;
 
         protected Id(int value) {
             this.value = value;
@@ -27,10 +29,13 @@ public sealed abstract class Vertex permits Object, Link {
         @JsonCreator
         public static Vertex.Id makeVertexId(String string) {
             int value = Integer.parseInt(string);
-            if (value < 0) {
-                return new Link.Id(value);
-            }
-            return new Object.Id(value);
+            int typeMaskValue = value & TYPE_MASK;
+            return switch (typeMaskValue) {
+                case Object.Id.MASK -> new Object.Id(value);
+                case Link.Id.MASK -> new Link.Id(value);
+                case Amount.Id.MASK -> new Amount.Id(value);
+                default -> throw new Error("Unknown type mask: " + typeMaskValue);
+            };
         }
 
         @JsonValue

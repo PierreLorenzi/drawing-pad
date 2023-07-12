@@ -1,6 +1,5 @@
 package fr.alphonse.drawingpad.data;
 
-import fr.alphonse.drawingpad.data.geometry.Position;
 import fr.alphonse.drawingpad.data.model.Amount;
 import fr.alphonse.drawingpad.data.model.Link;
 import fr.alphonse.drawingpad.data.model.Object;
@@ -9,15 +8,16 @@ import lombok.Data;
 import lombok.extern.jackson.Jacksonized;
 
 import java.util.List;
-import java.util.Map;
 
 @Data
 @Builder
 @Jacksonized
-public class ExampleJson {
+public class GraphJson {
 
-    private GraphJson graph;
+    private List<Object> objects;
 
-    private Map<Object.Id, Position> positions;
+    private List<Link> links;
+
+    private List<Amount> amounts;
 
 }

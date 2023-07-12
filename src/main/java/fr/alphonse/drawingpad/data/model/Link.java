@@ -3,7 +3,8 @@ package fr.alphonse.drawingpad.data.model;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
-import fr.alphonse.drawingpad.data.model.value.Value;
+import fr.alphonse.drawingpad.data.model.value.GraduatedValue;
+import fr.alphonse.drawingpad.data.model.value.LowerGraduation;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -25,10 +26,10 @@ public final class Link extends Vertex {
     private Vertex.Id destinationId;
 
     // non null
-    private Value originFactor;
+    private GraduatedValue<LowerGraduation> originFactor;
 
     // non null
-    private Value destinationFactor;
+    private GraduatedValue<LowerGraduation> destinationFactor;
 
     @JsonIgnore
     public Vertex getOrigin() {
@@ -49,6 +50,8 @@ public final class Link extends Vertex {
     }
 
     public static final class Id extends Vertex.Id {
+
+        public static final int MASK = 0x2_0000;
 
         public Id(int value) {
             super(value);

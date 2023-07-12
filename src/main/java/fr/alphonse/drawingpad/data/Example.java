@@ -1,7 +1,7 @@
 package fr.alphonse.drawingpad.data;
 
 import fr.alphonse.drawingpad.data.geometry.Position;
-import fr.alphonse.drawingpad.data.model.Link;
+import fr.alphonse.drawingpad.data.model.Graph;
 import fr.alphonse.drawingpad.data.model.Object;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -16,9 +16,7 @@ import java.util.Map;
 @AllArgsConstructor
 public class Example {
 
-    private Map<Object.Id, Object> objects;
-
-    private Map<Link.Id, Link> links;
+    private Graph graph;
 
     private Map<Object.Id, Position> positions;
 }

@@ -4,10 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import fr.alphonse.drawingpad.data.Example;
 import fr.alphonse.drawingpad.data.ExampleJson;
+import fr.alphonse.drawingpad.data.GraphJson;
 import fr.alphonse.drawingpad.data.geometry.Position;
-import fr.alphonse.drawingpad.data.model.Link;
+import fr.alphonse.drawingpad.data.model.*;
 import fr.alphonse.drawingpad.data.model.Object;
-import fr.alphonse.drawingpad.data.model.Vertex;
 import fr.alphonse.drawingpad.document.utils.ChangeDetector;
 import fr.alphonse.drawingpad.document.utils.DocumentUtils;
 import fr.alphonse.drawingpad.view.DrawingComponent;
@@ -50,8 +50,11 @@ public class Document {
 
     public Document(String windowName) {
         this.model = Example.builder()
-                .objects(new HashMap<>())
-                .links(new HashMap<>())
+                .graph(Graph.builder()
+                        .objects(new HashMap<>())
+                        .links(new HashMap<>())
+                        .amounts(new HashMap<>())
+                        .build())
                 .positions(new HashMap<>())
                 .build();
         this.changeDetector = new ChangeDetector(model);
@@ -74,19 +77,28 @@ public class Document {
     private static Example mapJsonToModel(ExampleJson json) throws IOException {
 
         // correct links
-        Map<Vertex.Id, Vertex> vertexMap = Stream.concat(json.getObjects().stream(), json.getLinks().stream()).collect(Collectors.toMap(Vertex::getId, Function.identity()));
-        for (Link link: json.getLinks()) {
+        Map<Vertex.Id, Vertex> vertexMap = Stream.concat(Stream.concat(json.getGraph().getObjects().stream(), json.getGraph().getLinks().stream()), json.getGraph().getAmounts().stream()).collect(Collectors.toMap(Vertex::getId, Function.identity()));
+        for (Link link: json.getGraph().getLinks()) {
             link.setOriginId(vertexMap.get(link.getOriginId()).getId());
             link.setDestinationId(vertexMap.get(link.getDestinationId()).getId());
         }
 
-        Map<Object.Id, Object> objects = json.getObjects().stream().collect(Collectors.toMap(Object::getId, Function.identity()));
-        Map<Link.Id, Link> links = json.getLinks().stream().collect(Collectors.toMap(Link::getId, Function.identity()));
-        Map<Object.Id, Position> positions = json.getPositions().entrySet().stream().collect(Collectors.toMap(entry -> json.getObjects().stream().map(Object::getId).filter(id -> id.getValue() == entry.getKey().getValue()).findFirst().get(), Map.Entry::getValue));
+        // correct amounts
+        for (Amount amount: json.getGraph().getAmounts()) {
+            amount.setModelId(vertexMap.get(amount.getModelId()).getId());
+        }
+
+        Map<Object.Id, Object> objects = json.getGraph().getObjects().stream().collect(Collectors.toMap(Object::getId, Function.identity()));
+        Map<Link.Id, Link> links = json.getGraph().getLinks().stream().collect(Collectors.toMap(Link::getId, Function.identity()));
+        Map<Amount.Id, Amount> amounts = json.getGraph().getAmounts().stream().collect(Collectors.toMap(Amount::getId, Function.identity()));
+        Map<Object.Id, Position> positions = json.getPositions().entrySet().stream().collect(Collectors.toMap(entry -> json.getGraph().getObjects().stream().map(Object::getId).filter(id -> id.getValue() == entry.getKey().getValue()).findFirst().orElseThrow(), Map.Entry::getValue));
 
         return Example.builder()
-                .objects(objects)
-                .links(links)
+                .graph(Graph.builder()
+                        .objects(objects)
+                        .links(links)
+                        .amounts(amounts)
+                        .build())
                 .positions(positions)
                 .build();
     }
@@ -288,8 +300,11 @@ public class Document {
 
     private static ExampleJson mapModelToJson(Example model) {
         return ExampleJson.builder()
-                .objects(model.getObjects().values().stream().toList())
-                .links(model.getLinks().values().stream().toList())
+                .graph(GraphJson.builder()
+                        .objects(model.getGraph().getObjects().values().stream().toList())
+                        .links(model.getGraph().getLinks().values().stream().toList())
+                        .amounts(model.getGraph().getAmounts().values().stream().toList())
+                        .build())
                 .positions(model.getPositions())
                 .build();
     }
