@@ -24,7 +24,7 @@ public class DrawingComponent extends JComponent {
 
     private final ChangeDetector changeDetector;
 
-    private final java.util.List<Vertex> selectedVertices = new ArrayList<>();
+    private final List<Vertex> selectedVertices = new ArrayList<>();
 
     private final ChangeDetector selectionChangeDetector = new ChangeDetector(selectedVertices);
 
@@ -427,8 +427,9 @@ public class DrawingComponent extends JComponent {
             if (selectedVertex == null) {
                 return;
             }
-            ModelHandler.addAmount(selectedVertex, model);
-            changeDetector.notifyChange();
+            if (ModelHandler.addAmount(selectedVertex, model)) {
+                changeDetector.notifyChange();
+            }
             return;
         }
         // if press with control, add definition
@@ -436,8 +437,9 @@ public class DrawingComponent extends JComponent {
             if (selectedVertex == null) {
                 return;
             }
-            ModelHandler.addDefinition(selectedVertex, model);
-            changeDetector.notifyChange();
+            if (ModelHandler.addDefinition(selectedVertex, model)) {
+                changeDetector.notifyChange();
+            }
             return;
         }
         this.lastSelectedVertex = selectedVertex;

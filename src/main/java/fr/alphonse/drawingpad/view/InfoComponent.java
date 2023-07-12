@@ -216,7 +216,7 @@ public class InfoComponent extends JPanel {
         panel.add(nameLabel);
         JTextField textField = new JTextField();
         textField.setMaximumSize(new Dimension(100000, 40));
-        textField.addActionListener(event -> {if (this.selectedAmount != null) {
+        textField.addActionListener(event -> {if (this.selectedDefinition != null) {
             this.selectedDefinition.setName(textField.getText());
             this.modelChangeDetector.notifyChange();
         }});
