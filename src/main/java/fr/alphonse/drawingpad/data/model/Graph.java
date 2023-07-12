@@ -5,7 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.Map;
+import java.util.List;
 
 @Data
 @Builder(toBuilder = true)
@@ -13,11 +13,11 @@ import java.util.Map;
 @AllArgsConstructor
 public class Graph {
 
-    private Map<Object.Id, Object> objects;
+    private List<Object> objects;
 
-    private Map<Link.Id, Link> links;
+    private List<Link> links;
 
-    private Map<Amount.Id, Amount> amounts;
+    private List<Amount> amounts;
 
-    private Map<Definition.Id, Definition> definitions;
+    private List<Definition> definitions;
 }

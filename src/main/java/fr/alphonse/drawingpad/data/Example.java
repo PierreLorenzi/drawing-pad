@@ -18,5 +18,5 @@ public class Example {
 
     private Graph graph;
 
-    private Map<Object.Id, Position> positions;
+    private Map<Object, Position> positions;
 }

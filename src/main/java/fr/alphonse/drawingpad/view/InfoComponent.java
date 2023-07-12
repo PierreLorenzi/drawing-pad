@@ -12,7 +12,7 @@ import java.awt.*;
 
 public class InfoComponent extends JPanel {
 
-    private final java.util.List<Vertex.Id> selection;
+    private final java.util.List<Vertex> selection;
 
     private final ChangeDetector modelChangeDetector;
 
@@ -56,7 +56,7 @@ public class InfoComponent extends JPanel {
 
     private static final String DEFINITION_SELECTION_CARD = "definition";
 
-    public InfoComponent(java.util.List<Vertex.Id> selection, ChangeDetector changeDetector, ChangeDetector modelChangeDetector) {
+    public InfoComponent(java.util.List<Vertex> selection, ChangeDetector changeDetector, ChangeDetector modelChangeDetector) {
         super();
         this.selection = selection;
         this.modelChangeDetector = modelChangeDetector;
@@ -246,21 +246,21 @@ public class InfoComponent extends JPanel {
             case 0 -> switchToCard(EMPTY_SELECTION_CARD);
             case 1 -> {
                 switch (selection.get(0)) {
-                    case Object.Id objectId -> {
+                    case Object object -> {
                         switchToCard(OBJECT_SELECTION_CARD);
-                        updateObjectSelectionView(objectId);
+                        updateObjectSelectionView(object);
                     }
-                    case Link.Id linkId -> {
+                    case Link link -> {
                         switchToCard(LINK_SELECTION_CARD);
-                        updateLinkSelectionView(linkId);
+                        updateLinkSelectionView(link);
                     }
-                    case Amount.Id amountId -> {
+                    case Amount amount -> {
                         switchToCard(AMOUNT_SELECTION_CARD);
-                        updateAmountSelectionView(amountId);
+                        updateAmountSelectionView(amount);
                     }
-                    case Definition.Id definitionId -> {
+                    case Definition definition -> {
                         switchToCard(DEFINITION_SELECTION_CARD);
-                        updateDefinitionSelectionView(definitionId);
+                        updateDefinitionSelectionView(definition);
                     }
                 }
             }
@@ -277,38 +277,34 @@ public class InfoComponent extends JPanel {
     }
 
     private void updateMultipleSelectionView() {
-        long objectCount = selection.stream().filter(id -> id instanceof Object.Id).count();
-        long linkCount = selection.stream().filter(id -> id instanceof Link.Id).count();
-        long amountCount = selection.stream().filter(id -> id instanceof Amount.Id).count();
-        long definitionCount = selection.stream().filter(id -> id instanceof Definition.Id).count();
+        long objectCount = selection.stream().filter(id -> id instanceof Object).count();
+        long linkCount = selection.stream().filter(id -> id instanceof Link).count();
+        long amountCount = selection.stream().filter(id -> id instanceof Amount).count();
+        long definitionCount = selection.stream().filter(id -> id instanceof Definition).count();
         long total = objectCount + linkCount + amountCount + definitionCount;
         multipleSelectionLabel.setText(total + " elements in selection: " + objectCount + " objects, " + amountCount + " amounts, " + definitionCount + " definitions, " + linkCount + " links");
     }
 
-    private void updateObjectSelectionView(Object.Id id) {
-        Object object = id.state();
+    private void updateObjectSelectionView(Object object) {
         selectedObject = object;
         objectNameField.setText(object.getName());
     }
 
-    private void updateLinkSelectionView(Link.Id id) {
-        Link link = id.state();
+    private void updateLinkSelectionView(Link link) {
         selectedLink = link;
         linkNameField.setText(link.getName());
         originFactorComponent.setValue(link.getOriginFactor());
         destinationFactorComponent.setValue(link.getDestinationFactor());
     }
 
-    private void updateAmountSelectionView(Amount.Id id) {
-        Amount amount = id.state();
+    private void updateAmountSelectionView(Amount amount) {
         selectedAmount = amount;
         amountNameField.setText(amount.getName());
         amountCountComponent.setValue(amount.getCount());
         amountDistinctCountComponent.setValue(amount.getDistinctCount());
     }
 
-    private void updateDefinitionSelectionView(Definition.Id id) {
-        Definition definition = id.state();
+    private void updateDefinitionSelectionView(Definition definition) {
         selectedDefinition = definition;
         definitionNameField.setText(definition.getName());
         definitionCompletenessComponent.setValue(definition.getCompleteness());

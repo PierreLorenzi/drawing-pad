@@ -17,6 +17,16 @@ public sealed abstract class Vertex permits Object, Link, Amount, Definition {
 
     private String name;
 
+    @Override
+    public boolean equals(java.lang.Object o) {
+        return this == o;
+    }
+
+    @Override
+    public int hashCode() {
+        return getId().hashCode();
+    }
+
     public static sealed abstract class Id permits Object.Id, Link.Id, Amount.Id, Definition.Id {
         private final int value;
 

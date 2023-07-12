@@ -24,11 +24,11 @@ public class DrawingComponent extends JComponent {
 
     private final ChangeDetector changeDetector;
 
-    private final java.util.List<Vertex.Id> selectedVertices = new ArrayList<>();
+    private final java.util.List<Vertex> selectedVertices = new ArrayList<>();
 
     private final ChangeDetector selectionChangeDetector = new ChangeDetector(selectedVertices);
 
-    private Map<Object.Id, Vector> dragRelativeVectors;
+    private Map<Object, Vector> dragRelativeVectors;
 
     private boolean canDrag = false;
 
@@ -133,7 +133,7 @@ public class DrawingComponent extends JComponent {
                     }
                 }
                 if (!hasDragged && lastSelectedVertex != null && DrawingComponent.this.selectedVertices.size() > 1 && (event.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) == 0) {
-                    DrawingComponent.this.selectedVertices.removeIf(Predicate.not(Predicate.isEqual(lastSelectedVertex.getId())));
+                    DrawingComponent.this.selectedVertices.removeIf(Predicate.not(Predicate.isEqual(lastSelectedVertex)));
                     DrawingComponent.this.repaint();
                     DrawingComponent.this.selectionChangeDetector.notifyChange();
                 }
@@ -188,7 +188,7 @@ public class DrawingComponent extends JComponent {
         this.repaint();
     }
 
-    public java.util.List<Vertex.Id> getSelection() {
+    public java.util.List<Vertex> getSelection() {
         return selectedVertices;
     }
 
@@ -197,12 +197,12 @@ public class DrawingComponent extends JComponent {
     }
 
     public void delete() {
-        for (Vertex.Id selectedVertex: selectedVertices) {
+        for (Vertex selectedVertex: selectedVertices) {
             switch (selectedVertex) {
-                case Object.Id objectId -> ModelHandler.deleteObject(objectId, model);
-                case Link.Id linkId -> ModelHandler.deleteLink(linkId, model);
-                case Amount.Id amountId -> ModelHandler.deleteAmount(amountId, model);
-                case Definition.Id definitionId -> ModelHandler.deleteDefinition(definitionId, model);
+                case Object object -> ModelHandler.deleteObject(object, model);
+                case Link link -> ModelHandler.deleteLink(link, model);
+                case Amount amount -> ModelHandler.deleteAmount(amount, model);
+                case Definition definition -> ModelHandler.deleteDefinition(definition, model);
             }
         }
         this.selectedVertices.clear();
@@ -237,9 +237,9 @@ public class DrawingComponent extends JComponent {
         }
 
         g.setColor(Color.BLACK);
-        Map<Object.Id, Position> positions = model.getPositions();
-        for (Object object: model.getGraph().getObjects().values()) {
-            var position = positions.get(object.getId());
+        Map<Object, Position> positions = model.getPositions();
+        for (Object object: model.getGraph().getObjects()) {
+            var position = positions.get(object);
 
             g.setColor(Color.GRAY);
             ((Graphics2D)g).setStroke(SHADOW_STROKE);
@@ -247,7 +247,7 @@ public class DrawingComponent extends JComponent {
             g.drawLine(position.x()+OBJECT_RECTANGLE_RADIUS, position.y()-OBJECT_RECTANGLE_RADIUS+2, position.x()+OBJECT_RECTANGLE_RADIUS, position.y()+OBJECT_RECTANGLE_RADIUS);
             ((Graphics2D)g).setStroke(BASIC_STROKE);
 
-            if (selectedVertices.contains(object.getId())) {
+            if (selectedVertices.contains(object)) {
                 g.setColor(SELECTION_COLOR);
             }
             else {
@@ -256,8 +256,8 @@ public class DrawingComponent extends JComponent {
             g.fillRect(position.x()-OBJECT_RECTANGLE_RADIUS, position.y()-OBJECT_RECTANGLE_RADIUS, 2*OBJECT_RECTANGLE_RADIUS, 2*OBJECT_RECTANGLE_RADIUS);
         }
 
-        for (Link link: model.getGraph().getLinks().values()) {
-            boolean isSelected = selectedVertices.contains(link.getId());
+        for (Link link: model.getGraph().getLinks()) {
+            boolean isSelected = selectedVertices.contains(link);
             if (isSelected) {
                 g.setColor(SELECTION_COLOR);
                 ((Graphics2D)g).setStroke(SELECTED_LINK_STROKE);
@@ -276,8 +276,8 @@ public class DrawingComponent extends JComponent {
                 drawArrow(linePosition2, position1, g);
             }
         }
-        for (Definition definition: model.getGraph().getDefinitions().values()) {
-            boolean isSelected = selectedVertices.contains(definition.getId());
+        for (Definition definition: model.getGraph().getDefinitions()) {
+            boolean isSelected = selectedVertices.contains(definition);
             if (isSelected) {
                 g.setColor(SELECTION_COLOR);
                 ((Graphics2D)g).setStroke(SELECTED_LINK_STROKE);
@@ -291,13 +291,13 @@ public class DrawingComponent extends JComponent {
         }
 
         ((Graphics2D)g).setStroke(BASIC_STROKE);
-        for (Amount amount: model.getGraph().getAmounts().values()) {
+        for (Amount amount: model.getGraph().getAmounts()) {
             var position = findVertexPosition(amount);
 
             g.setColor(Color.BLACK);
             g.drawOval(position.x() - AMOUNT_RADIUS, position.y() - AMOUNT_RADIUS, 2*AMOUNT_RADIUS, 2*AMOUNT_RADIUS);
 
-            if (selectedVertices.contains(amount.getId())) {
+            if (selectedVertices.contains(amount)) {
                 g.setColor(SELECTION_COLOR);
             }
             else {
@@ -341,7 +341,7 @@ public class DrawingComponent extends JComponent {
     }
 
     private Position findObjectPosition(Object object) {
-        return model.getPositions().get(object.getId());
+        return model.getPositions().get(object);
     }
 
     private Position computeArrowMeetingPositionWithVertex(Position position1, Position position2, Vertex vertex) {
@@ -445,12 +445,12 @@ public class DrawingComponent extends JComponent {
         if (selectedVertex == null && !isShiftKeyPressed) {
             this.selectionRectangleOrigin = position;
         }
-        boolean alreadySelected = selectedVertex != null && selectedVertices.contains(selectedVertex.getId());
+        boolean alreadySelected = selectedVertex != null && selectedVertices.contains(selectedVertex);
         this.canDrag = !(isShiftKeyPressed && (selectedVertex == null || alreadySelected));
         this.hasDragged = false;
         this.hasDraggedObjects = false;
         if (alreadySelected && isShiftKeyPressed) {
-            selectedVertices.remove(selectedVertex.getId());
+            selectedVertices.remove(selectedVertex);
             this.selectionChangeDetector.notifyChange();
         }
         if (!isShiftKeyPressed && !alreadySelected) {
@@ -458,12 +458,12 @@ public class DrawingComponent extends JComponent {
             this.selectionChangeDetector.notifyChange();
         }
         if (selectedVertex != null && !alreadySelected) {
-            this.selectedVertices.add(selectedVertex.getId());
+            this.selectedVertices.add(selectedVertex);
             this.selectionChangeDetector.notifyChange();
         }
         this.dragRelativeVectors = this.selectedVertices.stream()
-                .filter(vertex -> vertex instanceof Object.Id)
-                .map(vertex -> (Object.Id)vertex)
+                .filter(vertex -> vertex instanceof Object)
+                .map(vertex -> (Object)vertex)
                 .collect(Collectors.toMap(Function.identity(), object -> Vector.between(position, model.getPositions().get(object))));
         if (alreadySelected && !isShiftKeyPressed) {
             return;
@@ -480,22 +480,22 @@ public class DrawingComponent extends JComponent {
     }
 
     private Vertex findVertexAtPosition(Position position) {
-        Object object = findVertexAtPositionInList(position, model.getGraph().getObjects().values());
+        Object object = findVertexAtPositionInList(position, model.getGraph().getObjects());
         if (object != null) {
             return object;
         }
-        Amount amount = findVertexAtPositionInList(position, model.getGraph().getAmounts().values());
+        Amount amount = findVertexAtPositionInList(position, model.getGraph().getAmounts());
         if (amount != null) {
             return amount;
         }
-        Definition definition = findVertexAtPositionInList(position, model.getGraph().getDefinitions().values());
+        Definition definition = findVertexAtPositionInList(position, model.getGraph().getDefinitions());
         if (definition != null) {
             return definition;
         }
-        return findVertexAtPositionInList(position, model.getGraph().getLinks().values());
+        return findVertexAtPositionInList(position, model.getGraph().getLinks());
     }
 
-    private <T extends Vertex> T findVertexAtPositionInList(Position position, Collection<T> vertices) {
+    private <T extends Vertex> T findVertexAtPositionInList(Position position, List<T> vertices) {
         Function<Vertex,Integer> computeDistanceFunction = (vertex -> computePositionDistanceFromVertex(position, vertex));
         return vertices.stream()
                 .filter(vertex -> computeDistanceFunction.apply(vertex) < OBJECT_RADIUS)
@@ -560,7 +560,7 @@ public class DrawingComponent extends JComponent {
         Position position = findEventPosition(event);
         if (selectionRectangleOrigin != null) {
             this.selectionRectangleDestination = position;
-            List<Object.Id> objectsInRectangle = model.getGraph().getObjects().keySet().stream()
+            List<Object> objectsInRectangle = model.getGraph().getObjects().stream()
                     .filter(object -> isInRectangleBetweenPoints(model.getPositions().get(object), selectionRectangleOrigin, selectionRectangleDestination))
                     .toList();
             this.selectedVertices.clear();
@@ -575,8 +575,8 @@ public class DrawingComponent extends JComponent {
         }
         this.hasDragged = true;
         boolean needsRepaint = false;
-        for (Vertex.Id selectedVertex: selectedVertices) {
-            if (selectedVertex instanceof Object.Id object) {
+        for (Vertex selectedVertex: selectedVertices) {
+            if (selectedVertex instanceof Object object) {
                 model.getPositions().put(object, position.translate(this.dragRelativeVectors.get(object)));
                 needsRepaint = true;
             }
@@ -588,8 +588,8 @@ public class DrawingComponent extends JComponent {
                 int deltaX = nearbyGuidesX.isEmpty() ? 0 : nearbyGuidesX.get(0);
                 int deltaY = nearbyGuidesY.isEmpty() ? 0 : nearbyGuidesY.get(0);
                 Vector magnetismVector = new Vector(deltaX, deltaY);
-                for (Vertex.Id selectedVertex: selectedVertices) {
-                    if (selectedVertex instanceof Object.Id object) {
+                for (Vertex selectedVertex: selectedVertices) {
+                    if (selectedVertex instanceof Object object) {
                         model.getPositions().put(object, model.getPositions().get(object).translate(magnetismVector));
                     }
                 }
@@ -607,22 +607,19 @@ public class DrawingComponent extends JComponent {
                 position.y() < Math.max(corner1.y(), corner2.y());
     }
 
-    private void addLinksBetweenVertices(List<Vertex.Id> vertices) {
-        List<Link.Id> linksToAdd;
-        List<Amount.Id> amountsToAdd;
-        List<Definition.Id> definitionsToAdd;
+    private void addLinksBetweenVertices(List<Vertex> vertices) {
+        List<Link> linksToAdd;
+        List<Amount> amountsToAdd;
+        List<Definition> definitionsToAdd;
         do {
-            linksToAdd = model.getGraph().getLinks().values().stream()
-                    .filter(link -> !vertices.contains(link.getId()) && vertices.contains(link.getOrigin().getId()) && vertices.contains(link.getDestination().getId()))
-                    .map(Link::getId)
+            linksToAdd = model.getGraph().getLinks().stream()
+                    .filter(link -> !vertices.contains(link) && vertices.contains(link.getOrigin()) && vertices.contains(link.getDestination()))
                     .toList();
-            amountsToAdd = model.getGraph().getAmounts().values().stream()
-                    .filter(amount -> !vertices.contains(amount.getId()) && vertices.contains(amount.getModelId()))
-                    .map(Amount::getId)
+            amountsToAdd = model.getGraph().getAmounts().stream()
+                    .filter(amount -> !vertices.contains(amount) && vertices.contains(amount.getModel()))
                     .toList();
-            definitionsToAdd = model.getGraph().getDefinitions().values().stream()
-                    .filter(definition -> !vertices.contains(definition.getId()) && vertices.contains(definition.getBaseId()))
-                    .map(Definition::getId)
+            definitionsToAdd = model.getGraph().getDefinitions().stream()
+                    .filter(definition -> !vertices.contains(definition) && vertices.contains(definition.getBase()))
                     .toList();
             vertices.addAll(linksToAdd);
             vertices.addAll(amountsToAdd);
@@ -632,11 +629,11 @@ public class DrawingComponent extends JComponent {
 
     private List<Integer> findNearbyGuideDeltas(Function<Position, Integer> coordinate) {
         List<Position> selectedPositions = selectedVertices.stream()
-                .filter(vertex -> vertex instanceof Object.Id)
-                .map(vertex -> (Object.Id)vertex)
+                .filter(vertex -> vertex instanceof Object)
+                .map(vertex -> (Object)vertex)
                 .map(model.getPositions()::get)
                 .toList();
-        return this.model.getGraph().getObjects().keySet().stream()
+        return this.model.getGraph().getObjects().stream()
                 .filter(Predicate.not(selectedVertices::contains))
                 .map(model.getPositions()::get)
                 .map(coordinate)
@@ -649,12 +646,12 @@ public class DrawingComponent extends JComponent {
 
     private void fillGuides() {
         List<Position> selectedPositions = selectedVertices.stream()
-                .filter(vertex -> vertex instanceof Object.Id)
-                .map(vertex -> (Object.Id)vertex)
+                .filter(vertex -> vertex instanceof Object)
+                .map(vertex -> (Object)vertex)
                 .map(model.getPositions()::get)
                 .toList();
         this.guidesX.clear();
-        this.guidesX.addAll(this.model.getGraph().getObjects().keySet().stream()
+        this.guidesX.addAll(this.model.getGraph().getObjects().stream()
                 .filter(Predicate.not(selectedVertices::contains))
                 .map(model.getPositions()::get)
                 .map(Position::x)
@@ -662,7 +659,7 @@ public class DrawingComponent extends JComponent {
                 .distinct()
                 .toList());
         this.guidesY.clear();
-        this.guidesY.addAll(this.model.getGraph().getObjects().keySet().stream()
+        this.guidesY.addAll(this.model.getGraph().getObjects().stream()
                 .filter(Predicate.not(selectedVertices::contains))
                 .map(model.getPositions()::get)
                 .map(Position::y)
@@ -687,8 +684,8 @@ public class DrawingComponent extends JComponent {
 
     private void moveSelectedVertexBy(Vector delta) {
         boolean needsRefresh = false;
-        for (Vertex.Id selectedVertex: selectedVertices) {
-            if (selectedVertex instanceof Object.Id object) {
+        for (Vertex selectedVertex: selectedVertices) {
+            if (selectedVertex instanceof Object object) {
                 this.model.getPositions().put(object, this.model.getPositions().get(object).translate(delta));
                 needsRefresh = true;
             }

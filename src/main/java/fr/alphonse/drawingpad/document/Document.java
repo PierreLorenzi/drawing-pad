@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import fr.alphonse.drawingpad.data.Example;
 import fr.alphonse.drawingpad.data.ExampleJson;
-import fr.alphonse.drawingpad.data.GraphJson;
 import fr.alphonse.drawingpad.data.geometry.Position;
 import fr.alphonse.drawingpad.data.model.*;
 import fr.alphonse.drawingpad.data.model.Object;
@@ -51,10 +50,10 @@ public class Document {
     public Document(String windowName) {
         this.model = Example.builder()
                 .graph(Graph.builder()
-                        .objects(new HashMap<>())
-                        .links(new HashMap<>())
-                        .amounts(new HashMap<>())
-                        .definitions(new HashMap<>())
+                        .objects(new ArrayList<>())
+                        .links(new ArrayList<>())
+                        .amounts(new ArrayList<>())
+                        .definitions(new ArrayList<>())
                         .build())
                 .positions(new HashMap<>())
                 .build();
@@ -94,11 +93,11 @@ public class Document {
             definition.setBaseId(vertexMap.get(definition.getBaseId()).getId());
         }
 
-        Map<Object.Id, Object> objects = json.getGraph().getObjects().stream().collect(Collectors.toMap(Object::getId, Function.identity()));
-        Map<Link.Id, Link> links = json.getGraph().getLinks().stream().collect(Collectors.toMap(Link::getId, Function.identity()));
-        Map<Amount.Id, Amount> amounts = json.getGraph().getAmounts().stream().collect(Collectors.toMap(Amount::getId, Function.identity()));
-        Map<Definition.Id, Definition> definitions = json.getGraph().getDefinitions().stream().collect(Collectors.toMap(Definition::getId, Function.identity()));
-        Map<Object.Id, Position> positions = json.getPositions().entrySet().stream().collect(Collectors.toMap(entry -> json.getGraph().getObjects().stream().map(Object::getId).filter(id -> id.getValue() == entry.getKey().getValue()).findFirst().orElseThrow(), Map.Entry::getValue));
+        List<Object> objects = new ArrayList<>(json.getGraph().getObjects());
+        List<Link> links = new ArrayList<>(json.getGraph().getLinks());
+        List<Amount> amounts = new ArrayList<>(json.getGraph().getAmounts());
+        List<Definition> definitions = new ArrayList<>(json.getGraph().getDefinitions());
+        Map<Object, Position> positions = json.getPositions().keySet().stream().collect(Collectors.toMap(id -> (Object)vertexMap.get(id), json.getPositions()::get));
 
         return Example.builder()
                 .graph(Graph.builder()
@@ -308,13 +307,9 @@ public class Document {
 
     private static ExampleJson mapModelToJson(Example model) {
         return ExampleJson.builder()
-                .graph(GraphJson.builder()
-                        .objects(model.getGraph().getObjects().values().stream().toList())
-                        .links(model.getGraph().getLinks().values().stream().toList())
-                        .amounts(model.getGraph().getAmounts().values().stream().toList())
-                        .definitions(model.getGraph().getDefinitions().values().stream().toList())
-                        .build())
-                .positions(model.getPositions())
+                .graph(model.getGraph())
+                .positions(model.getPositions().keySet().stream()
+                        .collect(Collectors.toMap(Object::getId,model.getPositions()::get)))
                 .build();
     }
 

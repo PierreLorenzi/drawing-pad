@@ -8,7 +8,6 @@ import fr.alphonse.drawingpad.data.model.value.GraduatedValue;
 import lombok.experimental.UtilityClass;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 @UtilityClass
@@ -16,20 +15,21 @@ public class ModelHandler {
 
     public static void addObject(Position position, Example example) {
         Object object = makeObject(example);
-        example.getGraph().getObjects().put(object.getId(), object);
-        example.getPositions().put(object.getId(), position);
+        example.getGraph().getObjects().add(object);
+        example.getPositions().put(object, position);
     }
 
     private static Object makeObject(Example example) {
         var object = new Object();
-        var id = new Object.Id(findAvailableVertexId(example.getGraph().getObjects().keySet(), Object.Id.MASK));
+        var id = new Object.Id(findAvailableVertexId(example.getGraph().getObjects(), Object.Id.MASK));
         object.setId(id);
         id.setState(object);
         return object;
     }
 
-    private static int findAvailableVertexId(Collection<? extends Vertex.Id> ids, int mask) {
-        int maxId = ids.stream()
+    private static int findAvailableVertexId(List<? extends Vertex> vertices, int mask) {
+        int maxId = vertices.stream()
+                .map(Vertex::getId)
                 .mapToInt(Vertex.Id::getValue)
                 .max()
                 .orElse(mask);
@@ -41,7 +41,7 @@ public class ModelHandler {
             return false;
         }
         Link link = makeLink(origin, destination, example);
-        example.getGraph().getLinks().put(link.getId(), link);
+        example.getGraph().getLinks().add(link);
         return true;
     }
 
@@ -52,13 +52,13 @@ public class ModelHandler {
     }
 
     private static boolean doesLinkExistWithOriginAndDestination(Vertex origin, Vertex destination, Example example) {
-        return example.getGraph().getLinks().values().stream()
+        return example.getGraph().getLinks().stream()
                 .anyMatch(link -> link.getOriginId().equals(origin.getId()) && link.getDestinationId().equals(destination.getId()));
     }
 
     private static Link makeLink(Vertex origin, Vertex destination, Example example) {
         var link = new Link();
-        var id = new Link.Id(findAvailableVertexId(example.getGraph().getLinks().keySet(), Link.Id.MASK));
+        var id = new Link.Id(findAvailableVertexId(example.getGraph().getLinks(), Link.Id.MASK));
         link.setId(id);
         id.setState(link);
         link.setOrigin(origin);
@@ -73,17 +73,17 @@ public class ModelHandler {
             return false;
         }
         Amount amount = makeAmount(vertex, example);
-        example.getGraph().getAmounts().put(amount.getId(), amount);
+        example.getGraph().getAmounts().add(amount);
         return true;
     }
 
     private boolean doesAmountExistWithVertex(Vertex vertex, Example example) {
-        return example.getGraph().getAmounts().values().stream().anyMatch(amount -> amount.getModelId().equals(vertex.getId()));
+        return example.getGraph().getAmounts().stream().anyMatch(amount -> amount.getModelId().equals(vertex.getId()));
     }
 
     private static Amount makeAmount(Vertex vertex, Example example) {
         var amount = new Amount();
-        var id = new Amount.Id(findAvailableVertexId(example.getGraph().getAmounts().keySet(), Amount.Id.MASK));
+        var id = new Amount.Id(findAvailableVertexId(example.getGraph().getAmounts(), Amount.Id.MASK));
         amount.setId(id);
         id.setState(amount);
         amount.setModel(vertex);
@@ -97,17 +97,17 @@ public class ModelHandler {
             return false;
         }
         Definition definition = makeDefinition(vertex, example);
-        example.getGraph().getDefinitions().put(definition.getId(), definition);
+        example.getGraph().getDefinitions().add(definition);
         return true;
     }
 
     private boolean doesDefinitionExistWithVertex(Vertex vertex, Example example) {
-        return example.getGraph().getDefinitions().values().stream().anyMatch(definition -> definition.getBaseId().equals(vertex.getId()));
+        return example.getGraph().getDefinitions().stream().anyMatch(definition -> definition.getBaseId().equals(vertex.getId()));
     }
 
     private static Definition makeDefinition(Vertex vertex, Example example) {
         var definition = new Definition();
-        var id = new Definition.Id(findAvailableVertexId(example.getGraph().getDefinitions().keySet(), Definition.Id.MASK));
+        var id = new Definition.Id(findAvailableVertexId(example.getGraph().getDefinitions(), Definition.Id.MASK));
         definition.setId(id);
         id.setState(definition);
         definition.setBase(vertex);
@@ -115,66 +115,66 @@ public class ModelHandler {
         return definition;
     }
 
-    public static void deleteObject(Object.Id id, Example example) {
-        List<Vertex.Id> dependentIds = listDependentVertices(id, example);
-        removeVerticesFromExample(dependentIds, example);
-        example.getGraph().getObjects().remove(id);
-        example.getPositions().remove(id);
+    public static void deleteObject(Object object, Example example) {
+        List<Vertex> dependentVertices = listDependentVertices(object, example);
+        removeVerticesFromExample(dependentVertices, example);
+        example.getGraph().getObjects().remove(object);
+        example.getPositions().remove(object);
     }
 
-    private static List<Vertex.Id> listDependentVertices(Vertex.Id id, Example example) {
-        List<Vertex.Id> vertices = new ArrayList<>();
+    private static List<Vertex> listDependentVertices(Vertex vertex, Example example) {
+        List<Vertex> vertices = new ArrayList<>();
 
-        for (Link link: example.getGraph().getLinks().values()) {
-            if (link.getOriginId().equals(id) || link.getDestinationId().equals(id)) {
-                vertices.addAll(listDependentVertices(link.getId(), example));
-                vertices.add(link.getId());
+        for (Link link: example.getGraph().getLinks()) {
+            if (link.getOrigin() == vertex || link.getDestination() == vertex) {
+                vertices.addAll(listDependentVertices(link, example));
+                vertices.add(link);
             }
         }
 
-        for (Amount amount: example.getGraph().getAmounts().values()) {
-            if (amount.getModelId().equals(id)) {
-                vertices.addAll(listDependentVertices(amount.getId(), example));
-                vertices.add(amount.getId());
+        for (Amount amount: example.getGraph().getAmounts()) {
+            if (amount.getModel() == vertex) {
+                vertices.addAll(listDependentVertices(amount, example));
+                vertices.add(amount);
             }
         }
 
-        for (Definition definition: example.getGraph().getDefinitions().values()) {
-            if (definition.getBaseId().equals(id)) {
-                vertices.addAll(listDependentVertices(definition.getId(), example));
-                vertices.add(definition.getId());
+        for (Definition definition: example.getGraph().getDefinitions()) {
+            if (definition.getBase() == vertex) {
+                vertices.addAll(listDependentVertices(definition, example));
+                vertices.add(definition);
             }
         }
 
         return vertices;
     }
 
-    private static void removeVerticesFromExample(List<Vertex.Id> ids, Example example) {
-        for (Vertex.Id id: ids) {
-            switch (id) {
-                case Object.Id objectId -> example.getGraph().getObjects().remove(objectId);
-                case Link.Id linkId -> example.getGraph().getLinks().remove(linkId);
-                case Amount.Id amountId -> example.getGraph().getAmounts().remove(amountId);
-                case Definition.Id definitionId -> example.getGraph().getDefinitions().remove(definitionId);
+    private static void removeVerticesFromExample(List<Vertex> vertices, Example example) {
+        for (Vertex vertex: vertices) {
+            switch (vertex) {
+                case Object object -> example.getGraph().getObjects().remove(object);
+                case Link link -> example.getGraph().getLinks().remove(link);
+                case Amount amount -> example.getGraph().getAmounts().remove(amount);
+                case Definition definition -> example.getGraph().getDefinitions().remove(definition);
             }
         }
     }
 
-    public static void deleteLink(Link.Id id, Example example) {
-        List<Vertex.Id> dependentIds = listDependentVertices(id, example);
-        removeVerticesFromExample(dependentIds, example);
-        example.getGraph().getLinks().remove(id);
+    public static void deleteLink(Link link, Example example) {
+        List<Vertex> dependentVertices = listDependentVertices(link, example);
+        removeVerticesFromExample(dependentVertices, example);
+        example.getGraph().getLinks().remove(link);
     }
 
-    public static void deleteAmount(Amount.Id id, Example example) {
-        List<Vertex.Id> dependentIds = listDependentVertices(id, example);
-        removeVerticesFromExample(dependentIds, example);
-        example.getGraph().getAmounts().remove(id);
+    public static void deleteAmount(Amount amount, Example example) {
+        List<Vertex> dependentVertices = listDependentVertices(amount, example);
+        removeVerticesFromExample(dependentVertices, example);
+        example.getGraph().getAmounts().remove(amount);
     }
 
-    public static void deleteDefinition(Definition.Id id, Example example) {
-        List<Vertex.Id> dependentIds = listDependentVertices(id, example);
-        removeVerticesFromExample(dependentIds, example);
-        example.getGraph().getDefinitions().remove(id);
+    public static void deleteDefinition(Definition definition, Example example) {
+        List<Vertex> dependentVertices = listDependentVertices(definition, example);
+        removeVerticesFromExample(dependentVertices, example);
+        example.getGraph().getDefinitions().remove(definition);
     }
 }

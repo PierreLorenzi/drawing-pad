@@ -1,23 +1,24 @@
 package fr.alphonse.drawingpad.data;
 
 import fr.alphonse.drawingpad.data.geometry.Position;
-import fr.alphonse.drawingpad.data.model.Amount;
-import fr.alphonse.drawingpad.data.model.Link;
+import fr.alphonse.drawingpad.data.model.Graph;
 import fr.alphonse.drawingpad.data.model.Object;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.extern.jackson.Jacksonized;
 
-import java.util.List;
 import java.util.Map;
 
 @Data
-@Builder
+@Builder(toBuilder = true)
+@NoArgsConstructor
+@AllArgsConstructor
 @Jacksonized
 public class ExampleJson {
 
-    private GraphJson graph;
+    private Graph graph;
 
     private Map<Object.Id, Position> positions;
-
 }
