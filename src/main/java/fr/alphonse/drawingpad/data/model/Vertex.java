@@ -11,13 +11,13 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
-public sealed abstract class Vertex permits Object, Link, Amount {
+public sealed abstract class Vertex permits Object, Link, Amount, Definition {
 
     public abstract Id getId();
 
     private String name;
 
-    public static sealed abstract class Id permits Object.Id, Link.Id, Amount.Id {
+    public static sealed abstract class Id permits Object.Id, Link.Id, Amount.Id, Definition.Id {
         private final int value;
 
         public static final int TYPE_MASK = 0xF_0000;
@@ -34,6 +34,7 @@ public sealed abstract class Vertex permits Object, Link, Amount {
                 case Object.Id.MASK -> new Object.Id(value);
                 case Link.Id.MASK -> new Link.Id(value);
                 case Amount.Id.MASK -> new Amount.Id(value);
+                case Definition.Id.MASK -> new Definition.Id(value);
                 default -> throw new Error("Unknown type mask: " + typeMaskValue);
             };
         }

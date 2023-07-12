@@ -3,10 +3,8 @@ package fr.alphonse.drawingpad.view;
 import fr.alphonse.drawingpad.data.Example;
 import fr.alphonse.drawingpad.data.geometry.Position;
 import fr.alphonse.drawingpad.data.geometry.Vector;
-import fr.alphonse.drawingpad.data.model.Amount;
-import fr.alphonse.drawingpad.data.model.Link;
+import fr.alphonse.drawingpad.data.model.*;
 import fr.alphonse.drawingpad.data.model.Object;
-import fr.alphonse.drawingpad.data.model.Vertex;
 import fr.alphonse.drawingpad.document.utils.ChangeDetector;
 import fr.alphonse.drawingpad.view.internal.ModelHandler;
 
@@ -122,7 +120,7 @@ public class DrawingComponent extends JComponent {
                     var destination = findVertexAtPosition(position);
                     var origin = DrawingComponent.this.newLinkOrigin;
                     DrawingComponent.this.newLinkOrigin = null;
-                    if (destination != null) {
+                    if (destination != null && destination != origin) {
                         if (ModelHandler.addLink(origin, destination, model)) {
                             changeDetector.notifyChange();
                         }
@@ -204,6 +202,7 @@ public class DrawingComponent extends JComponent {
                 case Object.Id objectId -> ModelHandler.deleteObject(objectId, model);
                 case Link.Id linkId -> ModelHandler.deleteLink(linkId, model);
                 case Amount.Id amountId -> ModelHandler.deleteAmount(amountId, model);
+                case Definition.Id definitionId -> ModelHandler.deleteDefinition(definitionId, model);
             }
         }
         this.selectedVertices.clear();
@@ -267,10 +266,6 @@ public class DrawingComponent extends JComponent {
                 g.setColor(Color.BLACK);
                 ((Graphics2D)g).setStroke(BASIC_STROKE);
             }
-            if (isLoop(link)) {
-                drawLoop(findVertexPosition(link.getOrigin()), link.getOrigin(), g);
-                continue;
-            }
             var position1 = findVertexPosition(link.getOrigin());
             var position2 = findVertexPosition(link.getDestination());
             var linePosition1 = computeArrowMeetingPositionWithVertex(position2, position1, link.getOrigin());
@@ -280,6 +275,19 @@ public class DrawingComponent extends JComponent {
             if (isSelected) {
                 drawArrow(linePosition2, position1, g);
             }
+        }
+        for (Definition definition: model.getGraph().getDefinitions().values()) {
+            boolean isSelected = selectedVertices.contains(definition.getId());
+            if (isSelected) {
+                g.setColor(SELECTION_COLOR);
+                ((Graphics2D)g).setStroke(SELECTED_LINK_STROKE);
+            }
+            else {
+                g.setColor(Color.BLACK);
+                ((Graphics2D)g).setStroke(BASIC_STROKE);
+            }
+
+            drawLoop(findVertexPosition(definition.getBase()), definition.getBase(), g);
         }
 
         ((Graphics2D)g).setStroke(BASIC_STROKE);
@@ -315,24 +323,20 @@ public class DrawingComponent extends JComponent {
         return findPointPosition(point);
     }
 
-    private static boolean isLoop(Link link) {
-        return link.getOrigin().equals(link.getDestination());
-    }
-
     private Position findVertexPosition(Vertex vertex) {
         return switch (vertex) {
             case Object object -> findObjectPosition(object);
             case Link link -> {
-                if (isLoop(link)) {
-                    var extremityVector = new Vector(0, -LOOP_CENTER_DISTANCE - LOOP_CIRCLE_RADIUS);
-                    var basePosition = findVertexPosition(link.getOrigin());
-                    yield basePosition.translate(extremityVector);
-                }
                 var position1 = findVertexPosition(link.getOrigin());
                 var position2 = findVertexPosition(link.getDestination());
                 yield Position.middle(position1, position2);
             }
             case Amount amount -> findVertexPosition(amount.getModel()).translate(AMOUNT_VECTOR);
+            case Definition definition -> {
+                var extremityVector = new Vector(0, -LOOP_CENTER_DISTANCE - LOOP_CIRCLE_RADIUS);
+                var basePosition = findVertexPosition(definition.getBase());
+                yield basePosition.translate(extremityVector);
+            }
         };
     }
 
@@ -345,6 +349,7 @@ public class DrawingComponent extends JComponent {
             case Object ignored -> computeArrowMeetingPositionWithObject(position1, position2);
             case Link ignored -> position2;
             case Amount ignored -> computeArrowMeetingPositionWithAmount(position1, position2);
+            case Definition ignored -> position2;
         };
     }
 
@@ -406,23 +411,32 @@ public class DrawingComponent extends JComponent {
     private void reactToClick(MouseEvent event) {
         Position position = findEventPosition(event);
         var selectedVertex = findVertexAtPosition(position);
-        // if press with command, add object
+        // if press with command, add object or link
         if ((event.getModifiersEx() & Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()) != 0) {
-            ModelHandler.addObject(position, model);
-            changeDetector.notifyChange();
+            if (selectedVertex == null) {
+                ModelHandler.addObject(position, model);
+                changeDetector.notifyChange();
+            }
+            else {
+                newLinkOrigin = selectedVertex;
+            }
             return;
         }
-        // if press with option, add link
+        // if press with option, add amount
         if ((event.getModifiersEx() & KeyEvent.ALT_DOWN_MASK) != 0) {
-            newLinkOrigin = selectedVertex;
-            return;
-        }
-        // if press with control, add amount
-        if ((event.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0) {
             if (selectedVertex == null) {
                 return;
             }
             ModelHandler.addAmount(selectedVertex, model);
+            changeDetector.notifyChange();
+            return;
+        }
+        // if press with control, add definition
+        if ((event.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0) {
+            if (selectedVertex == null) {
+                return;
+            }
+            ModelHandler.addDefinition(selectedVertex, model);
             changeDetector.notifyChange();
             return;
         }
@@ -474,6 +488,10 @@ public class DrawingComponent extends JComponent {
         if (amount != null) {
             return amount;
         }
+        Definition definition = findVertexAtPositionInList(position, model.getGraph().getDefinitions().values());
+        if (definition != null) {
+            return definition;
+        }
         return findVertexAtPositionInList(position, model.getGraph().getLinks().values());
     }
 
@@ -490,6 +508,7 @@ public class DrawingComponent extends JComponent {
             case Object object -> findPositionDistanceFromObject(position, object);
             case Link link -> findPositionDistanceFromLink(position, link);
             case Amount amount -> findPositionDistanceFromAmount(position, amount);
+            case Definition definition -> findPositionDistanceFromDefinition(position, definition);
         };
     }
 
@@ -500,13 +519,6 @@ public class DrawingComponent extends JComponent {
     }
 
     private int findPositionDistanceFromLink(Position position, Link link) {
-
-        if (isLoop(link)) {
-            var basePosition = findVertexPosition(link.getOrigin());
-            var circleCenterVector = new Vector(0, -LOOP_CENTER_DISTANCE);
-            var circleCenter = basePosition.translate(circleCenterVector);
-            return (int)Position.distance(circleCenter, position);
-        }
 
         var position1 = findVertexPosition(link.getOrigin());
         var position2 = findVertexPosition(link.getDestination());
@@ -530,6 +542,13 @@ public class DrawingComponent extends JComponent {
         var amountPosition = findVertexPosition(amount);
         var vector = Vector.between(amountPosition, position);
         return Math.round(vector.length());
+    }
+
+    private int findPositionDistanceFromDefinition(Position position, Definition definition) {
+        var basePosition = findVertexPosition(definition.getBase());
+        var circleCenterVector = new Vector(0, -LOOP_CENTER_DISTANCE);
+        var circleCenter = basePosition.translate(circleCenterVector);
+        return (int)Position.distance(circleCenter, position);
     }
 
     private void reactToDrag(MouseEvent event) {
@@ -591,6 +610,7 @@ public class DrawingComponent extends JComponent {
     private void addLinksBetweenVertices(List<Vertex.Id> vertices) {
         List<Link.Id> linksToAdd;
         List<Amount.Id> amountsToAdd;
+        List<Definition.Id> definitionsToAdd;
         do {
             linksToAdd = model.getGraph().getLinks().values().stream()
                     .filter(link -> !vertices.contains(link.getId()) && vertices.contains(link.getOrigin().getId()) && vertices.contains(link.getDestination().getId()))
@@ -600,9 +620,14 @@ public class DrawingComponent extends JComponent {
                     .filter(amount -> !vertices.contains(amount.getId()) && vertices.contains(amount.getModelId()))
                     .map(Amount::getId)
                     .toList();
+            definitionsToAdd = model.getGraph().getDefinitions().values().stream()
+                    .filter(definition -> !vertices.contains(definition.getId()) && vertices.contains(definition.getBaseId()))
+                    .map(Definition::getId)
+                    .toList();
             vertices.addAll(linksToAdd);
             vertices.addAll(amountsToAdd);
-        } while (!linksToAdd.isEmpty() || !amountsToAdd.isEmpty());
+            vertices.addAll(definitionsToAdd);
+        } while (!linksToAdd.isEmpty() || !amountsToAdd.isEmpty() || !definitionsToAdd.isEmpty());
     }
 
     private List<Integer> findNearbyGuideDeltas(Function<Position, Integer> coordinate) {

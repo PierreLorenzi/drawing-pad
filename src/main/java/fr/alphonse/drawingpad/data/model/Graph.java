@@ -18,4 +18,6 @@ public class Graph {
     private Map<Link.Id, Link> links;
 
     private Map<Amount.Id, Amount> amounts;
+
+    private Map<Definition.Id, Definition> definitions;
 }

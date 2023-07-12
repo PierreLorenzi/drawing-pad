@@ -2,10 +2,8 @@ package fr.alphonse.drawingpad.view.internal;
 
 import fr.alphonse.drawingpad.data.Example;
 import fr.alphonse.drawingpad.data.geometry.Position;
-import fr.alphonse.drawingpad.data.model.Amount;
-import fr.alphonse.drawingpad.data.model.Link;
+import fr.alphonse.drawingpad.data.model.*;
 import fr.alphonse.drawingpad.data.model.Object;
-import fr.alphonse.drawingpad.data.model.Vertex;
 import fr.alphonse.drawingpad.data.model.value.GraduatedValue;
 import lombok.experimental.UtilityClass;
 
@@ -94,6 +92,29 @@ public class ModelHandler {
         return amount;
     }
 
+    public boolean addDefinition(Vertex vertex, Example example) {
+        if (doesDefinitionExistWithVertex(vertex, example)) {
+            return false;
+        }
+        Definition definition = makeDefinition(vertex, example);
+        example.getGraph().getDefinitions().put(definition.getId(), definition);
+        return true;
+    }
+
+    private boolean doesDefinitionExistWithVertex(Vertex vertex, Example example) {
+        return example.getGraph().getDefinitions().values().stream().anyMatch(definition -> definition.getBaseId().equals(vertex.getId()));
+    }
+
+    private static Definition makeDefinition(Vertex vertex, Example example) {
+        var definition = new Definition();
+        var id = new Definition.Id(findAvailableVertexId(example.getGraph().getDefinitions().keySet(), Definition.Id.MASK));
+        definition.setId(id);
+        id.setState(definition);
+        definition.setBase(vertex);
+        definition.setCompleteness(new GraduatedValue<>());
+        return definition;
+    }
+
     public static void deleteObject(Object.Id id, Example example) {
         List<Vertex.Id> dependentIds = listDependentVertices(id, example);
         removeVerticesFromExample(dependentIds, example);
@@ -118,6 +139,13 @@ public class ModelHandler {
             }
         }
 
+        for (Definition definition: example.getGraph().getDefinitions().values()) {
+            if (definition.getBaseId().equals(id)) {
+                vertices.addAll(listDependentVertices(definition.getId(), example));
+                vertices.add(definition.getId());
+            }
+        }
+
         return vertices;
     }
 
@@ -127,6 +155,7 @@ public class ModelHandler {
                 case Object.Id objectId -> example.getGraph().getObjects().remove(objectId);
                 case Link.Id linkId -> example.getGraph().getLinks().remove(linkId);
                 case Amount.Id amountId -> example.getGraph().getAmounts().remove(amountId);
+                case Definition.Id definitionId -> example.getGraph().getDefinitions().remove(definitionId);
             }
         }
     }
@@ -141,5 +170,11 @@ public class ModelHandler {
         List<Vertex.Id> dependentIds = listDependentVertices(id, example);
         removeVerticesFromExample(dependentIds, example);
         example.getGraph().getAmounts().remove(id);
+    }
+
+    public static void deleteDefinition(Definition.Id id, Example example) {
+        List<Vertex.Id> dependentIds = listDependentVertices(id, example);
+        removeVerticesFromExample(dependentIds, example);
+        example.getGraph().getDefinitions().remove(id);
     }
 }

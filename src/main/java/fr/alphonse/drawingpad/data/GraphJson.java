@@ -1,6 +1,7 @@
 package fr.alphonse.drawingpad.data;
 
 import fr.alphonse.drawingpad.data.model.Amount;
+import fr.alphonse.drawingpad.data.model.Definition;
 import fr.alphonse.drawingpad.data.model.Link;
 import fr.alphonse.drawingpad.data.model.Object;
 import lombok.Builder;
@@ -20,4 +21,5 @@ public class GraphJson {
 
     private List<Amount> amounts;
 
+    private List<Definition> definitions;
 }

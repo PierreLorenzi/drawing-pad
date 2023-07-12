@@ -1,9 +1,7 @@
 package fr.alphonse.drawingpad.view;
 
-import fr.alphonse.drawingpad.data.model.Amount;
-import fr.alphonse.drawingpad.data.model.Link;
+import fr.alphonse.drawingpad.data.model.*;
 import fr.alphonse.drawingpad.data.model.Object;
-import fr.alphonse.drawingpad.data.model.Vertex;
 import fr.alphonse.drawingpad.data.model.value.LowerGraduation;
 import fr.alphonse.drawingpad.data.model.value.WholeGraduation;
 import fr.alphonse.drawingpad.document.utils.ChangeDetector;
@@ -34,11 +32,17 @@ public class InfoComponent extends JPanel {
 
     private Amount selectedAmount = null;
 
+    private Definition selectedDefinition = null;
+
     private JTextField amountNameField;
 
     private GraduatedValueComponent<WholeGraduation> amountCountComponent;
 
     private GraduatedValueComponent<WholeGraduation> amountDistinctCountComponent;
+
+    private JTextField definitionNameField;
+
+    private GraduatedValueComponent<LowerGraduation> definitionCompletenessComponent;
 
     private static final String EMPTY_SELECTION_CARD = "empty";
 
@@ -49,6 +53,8 @@ public class InfoComponent extends JPanel {
     private static final String LINK_SELECTION_CARD = "link";
 
     private static final String AMOUNT_SELECTION_CARD = "amount";
+
+    private static final String DEFINITION_SELECTION_CARD = "definition";
 
     public InfoComponent(java.util.List<Vertex.Id> selection, ChangeDetector changeDetector, ChangeDetector modelChangeDetector) {
         super();
@@ -63,6 +69,7 @@ public class InfoComponent extends JPanel {
         add(makeObjectSelectionView(), OBJECT_SELECTION_CARD);
         add(makeLinkSelectionView(), LINK_SELECTION_CARD);
         add(makeAmountSelectionView(), AMOUNT_SELECTION_CARD);
+        add(makeDefinitionSelectionView(), DEFINITION_SELECTION_CARD);
         switchToCard(EMPTY_SELECTION_CARD);
 
         setBackground(Color.DARK_GRAY);
@@ -196,6 +203,40 @@ public class InfoComponent extends JPanel {
         return panel;
     }
 
+    private JPanel makeDefinitionSelectionView() {
+        JPanel panel = new JPanel();
+        panel.setBackground(null);
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.add(Box.createVerticalStrut(50));
+
+        // name
+        JLabel nameLabel = new JLabel("Name:");
+        nameLabel.setForeground(Color.WHITE);
+        nameLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        panel.add(nameLabel);
+        JTextField textField = new JTextField();
+        textField.setMaximumSize(new Dimension(100000, 40));
+        textField.addActionListener(event -> {if (this.selectedAmount != null) {
+            this.selectedDefinition.setName(textField.getText());
+            this.modelChangeDetector.notifyChange();
+        }});
+        panel.add(textField);
+        this.definitionNameField = textField;
+
+        // count
+        panel.add(Box.createVerticalStrut(30));
+        JLabel countLabel = new JLabel("Completeness:");
+        countLabel.setForeground(Color.WHITE);
+        countLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        panel.add(countLabel);
+        definitionCompletenessComponent = new GraduatedValueComponent<>(LowerGraduation.class);
+        panel.add(definitionCompletenessComponent);
+
+        panel.add(Box.createVerticalGlue());
+
+        return panel;
+    }
+
     private void reactToSelectionChange() {
 
         selectedObject = null;
@@ -217,6 +258,10 @@ public class InfoComponent extends JPanel {
                         switchToCard(AMOUNT_SELECTION_CARD);
                         updateAmountSelectionView(amountId);
                     }
+                    case Definition.Id definitionId -> {
+                        switchToCard(DEFINITION_SELECTION_CARD);
+                        updateDefinitionSelectionView(definitionId);
+                    }
                 }
             }
             default -> {
@@ -235,8 +280,9 @@ public class InfoComponent extends JPanel {
         long objectCount = selection.stream().filter(id -> id instanceof Object.Id).count();
         long linkCount = selection.stream().filter(id -> id instanceof Link.Id).count();
         long amountCount = selection.stream().filter(id -> id instanceof Amount.Id).count();
-        long total = objectCount + linkCount + amountCount;
-        multipleSelectionLabel.setText(total + " elements in selection: " + objectCount + " objects, " + amountCount + " amounts, " + linkCount + " links");
+        long definitionCount = selection.stream().filter(id -> id instanceof Definition.Id).count();
+        long total = objectCount + linkCount + amountCount + definitionCount;
+        multipleSelectionLabel.setText(total + " elements in selection: " + objectCount + " objects, " + amountCount + " amounts, " + definitionCount + " definitions, " + linkCount + " links");
     }
 
     private void updateObjectSelectionView(Object.Id id) {
@@ -259,5 +305,12 @@ public class InfoComponent extends JPanel {
         amountNameField.setText(amount.getName());
         amountCountComponent.setValue(amount.getCount());
         amountDistinctCountComponent.setValue(amount.getDistinctCount());
+    }
+
+    private void updateDefinitionSelectionView(Definition.Id id) {
+        Definition definition = id.state();
+        selectedDefinition = definition;
+        definitionNameField.setText(definition.getName());
+        definitionCompletenessComponent.setValue(definition.getCompleteness());
     }
 }

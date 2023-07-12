@@ -54,6 +54,7 @@ public class Document {
                         .objects(new HashMap<>())
                         .links(new HashMap<>())
                         .amounts(new HashMap<>())
+                        .definitions(new HashMap<>())
                         .build())
                 .positions(new HashMap<>())
                 .build();
@@ -77,7 +78,7 @@ public class Document {
     private static Example mapJsonToModel(ExampleJson json) throws IOException {
 
         // correct links
-        Map<Vertex.Id, Vertex> vertexMap = Stream.concat(Stream.concat(json.getGraph().getObjects().stream(), json.getGraph().getLinks().stream()), json.getGraph().getAmounts().stream()).collect(Collectors.toMap(Vertex::getId, Function.identity()));
+        Map<Vertex.Id, Vertex> vertexMap = Stream.concat(Stream.concat(Stream.concat(json.getGraph().getObjects().stream(), json.getGraph().getLinks().stream()), json.getGraph().getAmounts().stream()), json.getGraph().getDefinitions().stream()).collect(Collectors.toMap(Vertex::getId, Function.identity()));
         for (Link link: json.getGraph().getLinks()) {
             link.setOriginId(vertexMap.get(link.getOriginId()).getId());
             link.setDestinationId(vertexMap.get(link.getDestinationId()).getId());
@@ -88,9 +89,15 @@ public class Document {
             amount.setModelId(vertexMap.get(amount.getModelId()).getId());
         }
 
+        // correct definitions
+        for (Definition definition: json.getGraph().getDefinitions()) {
+            definition.setBaseId(vertexMap.get(definition.getBaseId()).getId());
+        }
+
         Map<Object.Id, Object> objects = json.getGraph().getObjects().stream().collect(Collectors.toMap(Object::getId, Function.identity()));
         Map<Link.Id, Link> links = json.getGraph().getLinks().stream().collect(Collectors.toMap(Link::getId, Function.identity()));
         Map<Amount.Id, Amount> amounts = json.getGraph().getAmounts().stream().collect(Collectors.toMap(Amount::getId, Function.identity()));
+        Map<Definition.Id, Definition> definitions = json.getGraph().getDefinitions().stream().collect(Collectors.toMap(Definition::getId, Function.identity()));
         Map<Object.Id, Position> positions = json.getPositions().entrySet().stream().collect(Collectors.toMap(entry -> json.getGraph().getObjects().stream().map(Object::getId).filter(id -> id.getValue() == entry.getKey().getValue()).findFirst().orElseThrow(), Map.Entry::getValue));
 
         return Example.builder()
@@ -98,6 +105,7 @@ public class Document {
                         .objects(objects)
                         .links(links)
                         .amounts(amounts)
+                        .definitions(definitions)
                         .build())
                 .positions(positions)
                 .build();
@@ -304,6 +312,7 @@ public class Document {
                         .objects(model.getGraph().getObjects().values().stream().toList())
                         .links(model.getGraph().getLinks().values().stream().toList())
                         .amounts(model.getGraph().getAmounts().values().stream().toList())
+                        .definitions(model.getGraph().getDefinitions().values().stream().toList())
                         .build())
                 .positions(model.getPositions())
                 .build();
