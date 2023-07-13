@@ -19,7 +19,9 @@ public final class Definition extends Vertex {
     @JsonManagedReference
     private Definition.Id id;
 
-    private LowerValue completeness;
+    private LowerValue localCompleteness;
+
+    private LowerValue globalCompleteness;
 
     private Vertex.Id baseId;
 
@@ -36,7 +38,9 @@ public final class Definition extends Vertex {
 
         public static final int MASK = 0x4_0000;
 
-        public static final int DEFINITION_COMPLETENESS_MASK = 0x41_0000;
+        public static final int DEFINITION_LOCAL_COMPLETENESS_MASK = 0x41_0000;
+
+        public static final int DEFINITION_GLOBAL_COMPLETENESS_MASK = 0x42_0000;
 
         public Id(int value) {
             super(value);

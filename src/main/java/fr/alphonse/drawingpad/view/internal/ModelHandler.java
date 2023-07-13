@@ -119,11 +119,13 @@ public class ModelHandler {
     private static Definition makeDefinition(Vertex vertex, Drawing drawing) {
         var definition = new Definition();
         var id = new Definition.Id(findAvailableVertexId(drawing.getGraph().getDefinitions(), Definition.Id.MASK));
-        var completenessId = new LowerValue.Id(makeSameIdWithOtherMask(id, Definition.Id.DEFINITION_COMPLETENESS_MASK));
+        var localCompletenessId = new LowerValue.Id(makeSameIdWithOtherMask(id, Definition.Id.DEFINITION_LOCAL_COMPLETENESS_MASK));
+        var globalCompletenessId = new LowerValue.Id(makeSameIdWithOtherMask(id, Definition.Id.DEFINITION_GLOBAL_COMPLETENESS_MASK));
         definition.setId(id);
         id.setState(definition);
         definition.setBase(vertex);
-        definition.setCompleteness(LowerValue.builder().id(completenessId).build());
+        definition.setLocalCompleteness(LowerValue.builder().id(localCompletenessId).build());
+        definition.setGlobalCompleteness(LowerValue.builder().id(globalCompletenessId).build());
         return definition;
     }
 

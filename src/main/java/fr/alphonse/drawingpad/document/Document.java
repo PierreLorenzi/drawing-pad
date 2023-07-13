@@ -141,9 +141,13 @@ public class Document {
 
         for (Definition definition: graph.getDefinitions()) {
 
-            LowerValue definitionCompleteness = definition.getCompleteness();
-            int definitionCompletenessIdValue = ModelHandler.makeSameIdWithOtherMask(definition.getId(), Definition.Id.DEFINITION_COMPLETENESS_MASK);
-            definitionCompleteness.setId(new LowerValue.Id(definitionCompletenessIdValue, definitionCompleteness));
+            LowerValue definitionLocalCompleteness = definition.getLocalCompleteness();
+            int definitionLocalCompletenessIdValue = ModelHandler.makeSameIdWithOtherMask(definition.getId(), Definition.Id.DEFINITION_LOCAL_COMPLETENESS_MASK);
+            definitionLocalCompleteness.setId(new LowerValue.Id(definitionLocalCompletenessIdValue, definitionLocalCompleteness));
+
+            LowerValue definitionGlobalCompleteness = definition.getGlobalCompleteness();
+            int definitionGlobalCompletenessIdValue = ModelHandler.makeSameIdWithOtherMask(definition.getId(), Definition.Id.DEFINITION_GLOBAL_COMPLETENESS_MASK);
+            definitionGlobalCompleteness.setId(new LowerValue.Id(definitionGlobalCompletenessIdValue, definitionGlobalCompleteness));
         }
     }
 
@@ -157,7 +161,8 @@ public class Document {
         vertexStream = Stream.concat(vertexStream, graph.getLinks().stream().map(Link::getDestinationFactor));
         vertexStream = Stream.concat(vertexStream, graph.getAmounts().stream().map(Amount::getCount));
         vertexStream = Stream.concat(vertexStream, graph.getAmounts().stream().map(Amount::getDistinctCount));
-        vertexStream = Stream.concat(vertexStream, graph.getDefinitions().stream().map(Definition::getCompleteness));
+        vertexStream = Stream.concat(vertexStream, graph.getDefinitions().stream().map(Definition::getLocalCompleteness));
+        vertexStream = Stream.concat(vertexStream, graph.getDefinitions().stream().map(Definition::getGlobalCompleteness));
         return vertexStream.collect(Collectors.toMap(Vertex::getId, Function.identity()));
     }
 

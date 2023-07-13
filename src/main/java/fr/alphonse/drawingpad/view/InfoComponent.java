@@ -42,7 +42,9 @@ public class InfoComponent extends JPanel {
 
     private JTextField definitionNameField;
 
-    private GraduatedValueComponent<LowerGraduation> definitionCompletenessComponent;
+    private GraduatedValueComponent<LowerGraduation> definitionLocalCompletenessComponent;
+
+    private GraduatedValueComponent<LowerGraduation> definitionGlobalCompletenessComponent;
 
     private static final String EMPTY_SELECTION_CARD = "empty";
 
@@ -223,14 +225,23 @@ public class InfoComponent extends JPanel {
         panel.add(textField);
         this.definitionNameField = textField;
 
-        // count
+        // local completeness
         panel.add(Box.createVerticalStrut(30));
-        JLabel countLabel = new JLabel("Completeness:");
-        countLabel.setForeground(Color.WHITE);
-        countLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        panel.add(countLabel);
-        definitionCompletenessComponent = new GraduatedValueComponent<>(LowerGraduation.class);
-        panel.add(definitionCompletenessComponent);
+        JLabel localCompletenessLabel = new JLabel("Local Completeness:");
+        localCompletenessLabel.setForeground(Color.WHITE);
+        localCompletenessLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        panel.add(localCompletenessLabel);
+        definitionLocalCompletenessComponent = new GraduatedValueComponent<>(LowerGraduation.class);
+        panel.add(definitionLocalCompletenessComponent);
+
+        // global completeness
+        panel.add(Box.createVerticalStrut(30));
+        JLabel globalCompletenessLabel = new JLabel("Global Completeness:");
+        globalCompletenessLabel.setForeground(Color.WHITE);
+        globalCompletenessLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        panel.add(globalCompletenessLabel);
+        definitionGlobalCompletenessComponent = new GraduatedValueComponent<>(LowerGraduation.class);
+        panel.add(definitionGlobalCompletenessComponent);
 
         panel.add(Box.createVerticalGlue());
 
@@ -309,6 +320,7 @@ public class InfoComponent extends JPanel {
     private void updateDefinitionSelectionView(Definition definition) {
         selectedDefinition = definition;
         definitionNameField.setText(definition.getName());
-        definitionCompletenessComponent.setValue(definition.getCompleteness());
+        definitionLocalCompletenessComponent.setValue(definition.getLocalCompleteness());
+        definitionGlobalCompletenessComponent.setValue(definition.getGlobalCompleteness());
     }
 }

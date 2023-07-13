@@ -47,7 +47,8 @@ public sealed abstract class Vertex permits Object, Link, Amount, Definition, Wh
                 case Definition.Id.MASK -> new Definition.Id(value);
                 case Link.Id.LINK_ORIGIN_FACTOR_MASK -> new LowerValue.Id(value);
                 case Link.Id.LINK_DESTINATION_FACTOR_MASK -> new LowerValue.Id(value);
-                case Definition.Id.DEFINITION_COMPLETENESS_MASK -> new LowerValue.Id(value);
+                case Definition.Id.DEFINITION_LOCAL_COMPLETENESS_MASK -> new LowerValue.Id(value);
+                case Definition.Id.DEFINITION_GLOBAL_COMPLETENESS_MASK -> new LowerValue.Id(value);
                 case Amount.Id.AMOUNT_COUNT_MASK -> new WholeValue.Id(value);
                 case Amount.Id.AMOUNT_DISTINCT_COUNT_MASK -> new WholeValue.Id(value);
                 default -> throw new Error("Unknown type mask: " + typeMaskValue);
