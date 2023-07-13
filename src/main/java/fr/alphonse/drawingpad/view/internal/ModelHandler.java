@@ -58,8 +58,8 @@ public class ModelHandler {
     private static Link makeLink(Vertex origin, Vertex destination, Drawing drawing) {
         var link = new Link();
         var id = new Link.Id(findAvailableVertexId(drawing.getGraph().getLinks(), Link.Id.MASK));
-        var originFactorId = new LowerValue.Id(makeSameIdWithOtherMask(id, LowerValue.Id.LINK_ORIGIN_FACTOR_MASK));
-        var destinationFactorId = new LowerValue.Id(makeSameIdWithOtherMask(id, LowerValue.Id.LINK_DESTINATION_FACTOR_MASK));
+        var originFactorId = new LowerValue.Id(makeSameIdWithOtherMask(id, Link.Id.LINK_ORIGIN_FACTOR_MASK));
+        var destinationFactorId = new LowerValue.Id(makeSameIdWithOtherMask(id, Link.Id.LINK_DESTINATION_FACTOR_MASK));
         link.setId(id);
         id.setState(link);
         link.setOrigin(origin);
@@ -93,8 +93,8 @@ public class ModelHandler {
     private static Amount makeAmount(Vertex vertex, Drawing drawing) {
         var amount = new Amount();
         var id = new Amount.Id(findAvailableVertexId(drawing.getGraph().getAmounts(), Amount.Id.MASK));
-        var countId = new WholeValue.Id(makeSameIdWithOtherMask(id, WholeValue.Id.AMOUNT_COUNT_MASK));
-        var distinctCountId = new WholeValue.Id(makeSameIdWithOtherMask(id, WholeValue.Id.AMOUNT_DISTINCT_COUNT_MASK));
+        var countId = new WholeValue.Id(makeSameIdWithOtherMask(id, Amount.Id.AMOUNT_COUNT_MASK));
+        var distinctCountId = new WholeValue.Id(makeSameIdWithOtherMask(id, Amount.Id.AMOUNT_DISTINCT_COUNT_MASK));
         amount.setId(id);
         id.setState(amount);
         amount.setModel(vertex);
@@ -119,7 +119,7 @@ public class ModelHandler {
     private static Definition makeDefinition(Vertex vertex, Drawing drawing) {
         var definition = new Definition();
         var id = new Definition.Id(findAvailableVertexId(drawing.getGraph().getDefinitions(), Definition.Id.MASK));
-        var completenessId = new LowerValue.Id(makeSameIdWithOtherMask(id, LowerValue.Id.DEFINITION_COMPLETENESS_MASK));
+        var completenessId = new LowerValue.Id(makeSameIdWithOtherMask(id, Definition.Id.DEFINITION_COMPLETENESS_MASK));
         definition.setId(id);
         id.setState(definition);
         definition.setBase(vertex);

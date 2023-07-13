@@ -27,10 +27,6 @@ public final class WholeValue extends Vertex implements GraduatedValue<WholeGrad
 
     public static final class Id extends Vertex.Id {
 
-        public static final int AMOUNT_COUNT_MASK = 0x8_0000;
-
-        public static final int AMOUNT_DISTINCT_COUNT_MASK = 0x9_0000;
-
         public Id(int value) {
             super(value);
         }

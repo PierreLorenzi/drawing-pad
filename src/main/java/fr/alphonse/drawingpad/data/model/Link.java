@@ -51,6 +51,10 @@ public final class Link extends Vertex {
 
         public static final int MASK = 0x2_0000;
 
+        public static final int LINK_ORIGIN_FACTOR_MASK = 0x21_0000;
+
+        public static final int LINK_DESTINATION_FACTOR_MASK = 0x22_0000;
+
         public Id(int value) {
             super(value);
         }

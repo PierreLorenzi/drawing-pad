@@ -38,6 +38,10 @@ public final class Amount extends Vertex {
 
         public static final int MASK = 0x3_0000;
 
+        public static final int AMOUNT_COUNT_MASK = 0x31_0000;
+
+        public static final int AMOUNT_DISTINCT_COUNT_MASK = 0x32_0000;
+
         public Id(int value) {
             super(value);
         }

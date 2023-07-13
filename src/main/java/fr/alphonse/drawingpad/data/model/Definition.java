@@ -36,6 +36,8 @@ public final class Definition extends Vertex {
 
         public static final int MASK = 0x4_0000;
 
+        public static final int DEFINITION_COMPLETENESS_MASK = 0x41_0000;
+
         public Id(int value) {
             super(value);
         }

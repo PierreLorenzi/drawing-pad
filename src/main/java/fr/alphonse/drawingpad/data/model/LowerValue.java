@@ -27,12 +27,6 @@ public final class LowerValue extends Vertex implements GraduatedValue<LowerGrad
 
     public static final class Id extends Vertex.Id {
 
-        public static final int LINK_ORIGIN_FACTOR_MASK = 0x5_0000;
-
-        public static final int LINK_DESTINATION_FACTOR_MASK = 0x6_0000;
-
-        public static final int DEFINITION_COMPLETENESS_MASK = 0x7_0000;
-
         public Id(int value) {
             super(value);
         }

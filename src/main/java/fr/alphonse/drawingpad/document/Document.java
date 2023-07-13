@@ -120,29 +120,29 @@ public class Document {
         for (Link link: graph.getLinks()) {
 
             LowerValue originFactor = link.getOriginFactor();
-            int originFactorIdValue = ModelHandler.makeSameIdWithOtherMask(link.getId(), LowerValue.Id.LINK_ORIGIN_FACTOR_MASK);
+            int originFactorIdValue = ModelHandler.makeSameIdWithOtherMask(link.getId(), Link.Id.LINK_ORIGIN_FACTOR_MASK);
             originFactor.setId(new LowerValue.Id(originFactorIdValue, originFactor));
 
             LowerValue destinationFactor = link.getDestinationFactor();
-            int destinationFactorIdValue = ModelHandler.makeSameIdWithOtherMask(link.getId(), LowerValue.Id.LINK_DESTINATION_FACTOR_MASK);
+            int destinationFactorIdValue = ModelHandler.makeSameIdWithOtherMask(link.getId(), Link.Id.LINK_DESTINATION_FACTOR_MASK);
             destinationFactor.setId(new LowerValue.Id(destinationFactorIdValue, destinationFactor));
         }
 
         for (Amount amount: graph.getAmounts()) {
 
             WholeValue amountCount = amount.getCount();
-            int amountCountIdValue = ModelHandler.makeSameIdWithOtherMask(amount.getId(), WholeValue.Id.AMOUNT_COUNT_MASK);
+            int amountCountIdValue = ModelHandler.makeSameIdWithOtherMask(amount.getId(), Amount.Id.AMOUNT_COUNT_MASK);
             amountCount.setId(new WholeValue.Id(amountCountIdValue, amountCount));
 
             WholeValue amountDistinctCount = amount.getDistinctCount();
-            int amountDistinctCountIdValue = ModelHandler.makeSameIdWithOtherMask(amount.getId(), WholeValue.Id.AMOUNT_DISTINCT_COUNT_MASK);
+            int amountDistinctCountIdValue = ModelHandler.makeSameIdWithOtherMask(amount.getId(), Amount.Id.AMOUNT_DISTINCT_COUNT_MASK);
             amountDistinctCount.setId(new WholeValue.Id(amountDistinctCountIdValue, amountDistinctCount));
         }
 
         for (Definition definition: graph.getDefinitions()) {
 
             LowerValue definitionCompleteness = definition.getCompleteness();
-            int definitionCompletenessIdValue = ModelHandler.makeSameIdWithOtherMask(definition.getId(), LowerValue.Id.DEFINITION_COMPLETENESS_MASK);
+            int definitionCompletenessIdValue = ModelHandler.makeSameIdWithOtherMask(definition.getId(), Definition.Id.DEFINITION_COMPLETENESS_MASK);
             definitionCompleteness.setId(new LowerValue.Id(definitionCompletenessIdValue, definitionCompleteness));
         }
     }
