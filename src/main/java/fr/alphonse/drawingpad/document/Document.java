@@ -2,8 +2,8 @@ package fr.alphonse.drawingpad.document;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import fr.alphonse.drawingpad.data.Example;
-import fr.alphonse.drawingpad.data.ExampleJson;
+import fr.alphonse.drawingpad.data.Drawing;
+import fr.alphonse.drawingpad.data.DrawingJson;
 import fr.alphonse.drawingpad.data.geometry.Position;
 import fr.alphonse.drawingpad.data.model.*;
 import fr.alphonse.drawingpad.data.model.Object;
@@ -27,11 +27,11 @@ import java.util.stream.Stream;
 
 public class Document {
 
-    private Example model;
+    private Drawing model;
 
     private final ChangeDetector changeDetector;
 
-    private final List<Example> previousModels = new ArrayList<>();
+    private final List<Drawing> previousModels = new ArrayList<>();
 
     private Integer previousModelIndex;
 
@@ -48,7 +48,7 @@ public class Document {
     private boolean wasModifiedSinceLastSave = false;
 
     public Document(String windowName) {
-        this.model = Example.builder()
+        this.model = Drawing.builder()
                 .graph(Graph.builder()
                         .objects(new ArrayList<>())
                         .links(new ArrayList<>())
@@ -69,12 +69,12 @@ public class Document {
         listenToChanges();
     }
 
-    private static Example importFile(Path path) throws IOException {
-        ExampleJson json = new JsonMapper().readValue(path.toFile(), ExampleJson.class);
+    private static Drawing importFile(Path path) throws IOException {
+        DrawingJson json = new JsonMapper().readValue(path.toFile(), DrawingJson.class);
         return mapJsonToModel(json);
     }
 
-    private static Example mapJsonToModel(ExampleJson json) throws IOException {
+    private static Drawing mapJsonToModel(DrawingJson json) throws IOException {
 
         // correct links
         Map<Vertex.Id, Vertex> vertexMap = Stream.concat(Stream.concat(Stream.concat(json.getGraph().getObjects().stream(), json.getGraph().getLinks().stream()), json.getGraph().getAmounts().stream()), json.getGraph().getDefinitions().stream()).collect(Collectors.toMap(Vertex::getId, Function.identity()));
@@ -99,7 +99,7 @@ public class Document {
         List<Definition> definitions = new ArrayList<>(json.getGraph().getDefinitions());
         Map<Object, Position> positions = json.getPositions().keySet().stream().collect(Collectors.toMap(id -> (Object)vertexMap.get(id), json.getPositions()::get));
 
-        return Example.builder()
+        return Drawing.builder()
                 .graph(Graph.builder()
                         .objects(objects)
                         .links(links)
@@ -115,13 +115,13 @@ public class Document {
         changeDetector.addListener(this, Document::reactToChange);
     }
 
-    private static Example copyModel(Example model) {
+    private static Drawing copyModel(Drawing model) {
         ObjectMapper objectMapper = new ObjectMapper();
 
         try {
-            ExampleJson jsonContentInput = mapModelToJson(model);
+            DrawingJson jsonContentInput = mapModelToJson(model);
             String jsonString = objectMapper.writeValueAsString(jsonContentInput);
-            ExampleJson jsonContentOutput = objectMapper.readValue(jsonString, ExampleJson.class);
+            DrawingJson jsonContentOutput = objectMapper.readValue(jsonString, DrawingJson.class);
             return mapJsonToModel(jsonContentOutput);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -133,7 +133,7 @@ public class Document {
             previousModels.subList(previousModelIndex+1, previousModels.size()).clear();
             previousModelIndex = null;
         }
-        Example currentModel = copyModel(model);
+        Drawing currentModel = copyModel(model);
         previousModels.add(currentModel);
         changeModifiedFlag(true);
     }
@@ -255,7 +255,7 @@ public class Document {
         }
     }
 
-    private void changeModel(Example model) {
+    private void changeModel(Drawing model) {
         this.model = model;
         this.changeDetector.reinitModel(model);
         drawingComponent.changeModel(model);
@@ -297,7 +297,7 @@ public class Document {
     }
 
     public void writeFile() {
-        ExampleJson json = mapModelToJson(model);
+        DrawingJson json = mapModelToJson(model);
         try {
             new JsonMapper().writeValue(path.toFile(), json);
         } catch (IOException e) {
@@ -305,8 +305,8 @@ public class Document {
         }
     }
 
-    private static ExampleJson mapModelToJson(Example model) {
-        return ExampleJson.builder()
+    private static DrawingJson mapModelToJson(Drawing model) {
+        return DrawingJson.builder()
                 .graph(model.getGraph())
                 .positions(model.getPositions().keySet().stream()
                         .collect(Collectors.toMap(Object::getId,model.getPositions()::get)))

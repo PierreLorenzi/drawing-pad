@@ -1,6 +1,6 @@
 package fr.alphonse.drawingpad.view;
 
-import fr.alphonse.drawingpad.data.Example;
+import fr.alphonse.drawingpad.data.Drawing;
 import fr.alphonse.drawingpad.data.geometry.Position;
 import fr.alphonse.drawingpad.data.geometry.Vector;
 import fr.alphonse.drawingpad.data.model.*;
@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 
 public class DrawingComponent extends JComponent {
 
-    private Example model;
+    private Drawing model;
 
     private final ChangeDetector changeDetector;
 
@@ -88,7 +88,7 @@ public class DrawingComponent extends JComponent {
 
     private static final int AMOUNT_RADIUS = 9;
 
-    public DrawingComponent(Example model, ChangeDetector changeDetector) {
+    public DrawingComponent(Drawing model, ChangeDetector changeDetector) {
         super();
         this.model = model;
         this.changeDetector = changeDetector;
@@ -182,7 +182,7 @@ public class DrawingComponent extends JComponent {
         this.setFocusable(true);
     }
 
-    public void changeModel(Example model) {
+    public void changeModel(Drawing model) {
         this.model = model;
         this.changeDetector.reinitModel(model);
         this.repaint();

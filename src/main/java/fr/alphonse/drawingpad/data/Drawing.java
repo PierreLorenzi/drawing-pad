@@ -7,7 +7,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.extern.jackson.Jacksonized;
 
 import java.util.Map;
 
@@ -15,10 +14,9 @@ import java.util.Map;
 @Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
-@Jacksonized
-public class ExampleJson {
+public class Drawing {
 
     private Graph graph;
 
-    private Map<Object.Id, Position> positions;
+    private Map<Object, Position> positions;
 }
