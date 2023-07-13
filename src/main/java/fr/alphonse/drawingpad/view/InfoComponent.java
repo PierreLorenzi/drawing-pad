@@ -262,6 +262,8 @@ public class InfoComponent extends JPanel {
                         switchToCard(DEFINITION_SELECTION_CARD);
                         updateDefinitionSelectionView(definition);
                     }
+                    case WholeValue ignored -> throw new Error("Whole values not handled as real vertices");
+                    case LowerValue ignored -> throw new Error("Lower values not handled as real vertices");
                 }
             }
             default -> {

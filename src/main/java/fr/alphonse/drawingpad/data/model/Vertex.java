@@ -11,7 +11,7 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
-public sealed abstract class Vertex permits Object, Link, Amount, Definition {
+public sealed abstract class Vertex permits Object, Link, Amount, Definition, WholeValue, LowerValue {
 
     public abstract Id getId();
 
@@ -27,7 +27,7 @@ public sealed abstract class Vertex permits Object, Link, Amount, Definition {
         return getId().hashCode();
     }
 
-    public static sealed abstract class Id permits Object.Id, Link.Id, Amount.Id, Definition.Id {
+    public static sealed abstract class Id permits Object.Id, Link.Id, Amount.Id, Definition.Id, WholeValue.Id, LowerValue.Id {
         private final int value;
 
         public static final int TYPE_MASK = 0xF_0000;
@@ -45,6 +45,11 @@ public sealed abstract class Vertex permits Object, Link, Amount, Definition {
                 case Link.Id.MASK -> new Link.Id(value);
                 case Amount.Id.MASK -> new Amount.Id(value);
                 case Definition.Id.MASK -> new Definition.Id(value);
+                case LowerValue.Id.LINK_ORIGIN_FACTOR_MASK -> new LowerValue.Id(value);
+                case LowerValue.Id.LINK_DESTINATION_FACTOR_MASK -> new LowerValue.Id(value);
+                case LowerValue.Id.DEFINITION_COMPLETENESS_MASK -> new LowerValue.Id(value);
+                case WholeValue.Id.AMOUNT_COUNT_MASK -> new WholeValue.Id(value);
+                case WholeValue.Id.AMOUNT_DISTINCT_COUNT_MASK -> new WholeValue.Id(value);
                 default -> throw new Error("Unknown type mask: " + typeMaskValue);
             };
         }

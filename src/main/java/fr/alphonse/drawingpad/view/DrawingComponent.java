@@ -203,6 +203,8 @@ public class DrawingComponent extends JComponent {
                 case Link link -> ModelHandler.deleteLink(link, model);
                 case Amount amount -> ModelHandler.deleteAmount(amount, model);
                 case Definition definition -> ModelHandler.deleteDefinition(definition, model);
+                case WholeValue ignored -> throw new Error("Whole values not handled as real vertices");
+                case LowerValue ignored -> throw new Error("Lower values not handled as real vertices");
             }
         }
         this.selectedVertices.clear();
@@ -337,6 +339,8 @@ public class DrawingComponent extends JComponent {
                 var basePosition = findVertexPosition(definition.getBase());
                 yield basePosition.translate(extremityVector);
             }
+            case WholeValue ignored -> throw new Error("Whole values not handled as real vertices");
+            case LowerValue ignored -> throw new Error("Lower values not handled as real vertices");
         };
     }
 
@@ -350,6 +354,8 @@ public class DrawingComponent extends JComponent {
             case Link ignored -> position2;
             case Amount ignored -> computeArrowMeetingPositionWithAmount(position1, position2);
             case Definition ignored -> position2;
+            case WholeValue ignored -> throw new Error("Whole values not handled as real vertices");
+            case LowerValue ignored -> throw new Error("Lower values not handled as real vertices");
         };
     }
 
@@ -511,6 +517,8 @@ public class DrawingComponent extends JComponent {
             case Link link -> findPositionDistanceFromLink(position, link);
             case Amount amount -> findPositionDistanceFromAmount(position, amount);
             case Definition definition -> findPositionDistanceFromDefinition(position, definition);
+            case WholeValue ignored -> throw new Error("Whole values not handled as real vertices");
+            case LowerValue ignored -> throw new Error("Lower values not handled as real vertices");
         };
     }
 

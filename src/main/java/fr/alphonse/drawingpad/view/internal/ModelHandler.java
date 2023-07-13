@@ -4,7 +4,6 @@ import fr.alphonse.drawingpad.data.Drawing;
 import fr.alphonse.drawingpad.data.geometry.Position;
 import fr.alphonse.drawingpad.data.model.*;
 import fr.alphonse.drawingpad.data.model.Object;
-import fr.alphonse.drawingpad.data.model.value.GraduatedValue;
 import lombok.experimental.UtilityClass;
 
 import java.util.ArrayList;
@@ -59,13 +58,23 @@ public class ModelHandler {
     private static Link makeLink(Vertex origin, Vertex destination, Drawing drawing) {
         var link = new Link();
         var id = new Link.Id(findAvailableVertexId(drawing.getGraph().getLinks(), Link.Id.MASK));
+        var originFactorId = new LowerValue.Id(makeSameIdWithOtherMask(id, LowerValue.Id.LINK_ORIGIN_FACTOR_MASK));
+        var destinationFactorId = new LowerValue.Id(makeSameIdWithOtherMask(id, LowerValue.Id.LINK_DESTINATION_FACTOR_MASK));
         link.setId(id);
         id.setState(link);
         link.setOrigin(origin);
         link.setDestination(destination);
-        link.setOriginFactor(new GraduatedValue<>());
-        link.setDestinationFactor(new GraduatedValue<>());
+        link.setOriginFactor(LowerValue.builder()
+                        .id(originFactorId)
+                .build());
+        link.setDestinationFactor(LowerValue.builder()
+                .id(destinationFactorId)
+                .build());
         return link;
+    }
+
+    public static int makeSameIdWithOtherMask(Vertex.Id id, int mask) {
+        return (id.getValue() & ~Vertex.Id.TYPE_MASK) | mask;
     }
 
     public boolean addAmount(Vertex vertex, Drawing drawing) {
@@ -84,11 +93,13 @@ public class ModelHandler {
     private static Amount makeAmount(Vertex vertex, Drawing drawing) {
         var amount = new Amount();
         var id = new Amount.Id(findAvailableVertexId(drawing.getGraph().getAmounts(), Amount.Id.MASK));
+        var countId = new WholeValue.Id(makeSameIdWithOtherMask(id, WholeValue.Id.AMOUNT_COUNT_MASK));
+        var distinctCountId = new WholeValue.Id(makeSameIdWithOtherMask(id, WholeValue.Id.AMOUNT_DISTINCT_COUNT_MASK));
         amount.setId(id);
         id.setState(amount);
         amount.setModel(vertex);
-        amount.setCount(new GraduatedValue<>());
-        amount.setDistinctCount(new GraduatedValue<>());
+        amount.setCount(WholeValue.builder().id(countId).build());
+        amount.setDistinctCount(WholeValue.builder().id(distinctCountId).build());
         return amount;
     }
 
@@ -108,16 +119,17 @@ public class ModelHandler {
     private static Definition makeDefinition(Vertex vertex, Drawing drawing) {
         var definition = new Definition();
         var id = new Definition.Id(findAvailableVertexId(drawing.getGraph().getDefinitions(), Definition.Id.MASK));
+        var completenessId = new LowerValue.Id(makeSameIdWithOtherMask(id, LowerValue.Id.DEFINITION_COMPLETENESS_MASK));
         definition.setId(id);
         id.setState(definition);
         definition.setBase(vertex);
-        definition.setCompleteness(new GraduatedValue<>());
+        definition.setCompleteness(LowerValue.builder().id(completenessId).build());
         return definition;
     }
 
     public static void deleteObject(Object object, Drawing drawing) {
         List<Vertex> dependentVertices = listDependentVertices(object, drawing);
-        removeVerticesFromExample(dependentVertices, drawing);
+        removeVerticesFromDrawing(dependentVertices, drawing);
         drawing.getGraph().getObjects().remove(object);
         drawing.getPositions().remove(object);
     }
@@ -149,32 +161,34 @@ public class ModelHandler {
         return vertices;
     }
 
-    private static void removeVerticesFromExample(List<Vertex> vertices, Drawing drawing) {
+    private static void removeVerticesFromDrawing(List<Vertex> vertices, Drawing drawing) {
         for (Vertex vertex: vertices) {
             switch (vertex) {
                 case Object object -> drawing.getGraph().getObjects().remove(object);
                 case Link link -> drawing.getGraph().getLinks().remove(link);
                 case Amount amount -> drawing.getGraph().getAmounts().remove(amount);
                 case Definition definition -> drawing.getGraph().getDefinitions().remove(definition);
+                case WholeValue ignored -> throw new Error("Whole values not handled as real vertices");
+                case LowerValue ignored -> throw new Error("Lower values not handled as real vertices");
             }
         }
     }
 
     public static void deleteLink(Link link, Drawing drawing) {
         List<Vertex> dependentVertices = listDependentVertices(link, drawing);
-        removeVerticesFromExample(dependentVertices, drawing);
+        removeVerticesFromDrawing(dependentVertices, drawing);
         drawing.getGraph().getLinks().remove(link);
     }
 
     public static void deleteAmount(Amount amount, Drawing drawing) {
         List<Vertex> dependentVertices = listDependentVertices(amount, drawing);
-        removeVerticesFromExample(dependentVertices, drawing);
+        removeVerticesFromDrawing(dependentVertices, drawing);
         drawing.getGraph().getAmounts().remove(amount);
     }
 
     public static void deleteDefinition(Definition definition, Drawing drawing) {
         List<Vertex> dependentVertices = listDependentVertices(definition, drawing);
-        removeVerticesFromExample(dependentVertices, drawing);
+        removeVerticesFromDrawing(dependentVertices, drawing);
         drawing.getGraph().getDefinitions().remove(definition);
     }
 }

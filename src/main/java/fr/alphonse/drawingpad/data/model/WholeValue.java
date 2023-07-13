@@ -2,7 +2,8 @@ package fr.alphonse.drawingpad.data.model;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
+import fr.alphonse.drawingpad.data.model.value.GraduatedValue;
+import fr.alphonse.drawingpad.data.model.value.WholeGraduation;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -14,27 +15,21 @@ import lombok.experimental.SuperBuilder;
 @AllArgsConstructor
 @SuperBuilder
 @EqualsAndHashCode(callSuper = true)
-public final class Definition extends Vertex {
-
-    @JsonManagedReference
-    private Definition.Id id;
-
-    private LowerValue completeness;
-
-    private Vertex.Id baseId;
+public final class WholeValue extends Vertex implements GraduatedValue<WholeGraduation> {
 
     @JsonIgnore
-    public Vertex getBase() {
-        return baseId.state();
-    }
+    private WholeValue.Id id;
 
-    public void setBase(Vertex vertex) {
-        setBaseId(vertex.getId());
-    }
+    private WholeGraduation graduation;
+
+    // > 1
+    private Double numberInGraduation;
 
     public static final class Id extends Vertex.Id {
 
-        public static final int MASK = 0x4_0000;
+        public static final int AMOUNT_COUNT_MASK = 0x8_0000;
+
+        public static final int AMOUNT_DISTINCT_COUNT_MASK = 0x9_0000;
 
         public Id(int value) {
             super(value);
@@ -44,15 +39,16 @@ public final class Definition extends Vertex {
             super(Integer.parseInt(string));
         }
 
-        @JsonBackReference
-        private transient Definition state;
-
-        public Definition state() {
-            return state;
+        public Id(int value, WholeValue state) {
+            super(value);
+            this.state = state;
         }
 
-        public void setState(Definition state) {
-            this.state = state;
+        @JsonBackReference
+        private transient WholeValue state;
+
+        public WholeValue state() {
+            return state;
         }
     }
 }

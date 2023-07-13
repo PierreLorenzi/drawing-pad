@@ -11,6 +11,7 @@ import fr.alphonse.drawingpad.document.utils.ChangeDetector;
 import fr.alphonse.drawingpad.document.utils.DocumentUtils;
 import fr.alphonse.drawingpad.view.DrawingComponent;
 import fr.alphonse.drawingpad.view.InfoComponent;
+import fr.alphonse.drawingpad.view.internal.ModelHandler;
 
 import javax.swing.*;
 import java.awt.*;
@@ -76,8 +77,11 @@ public class Document {
 
     private static Drawing mapJsonToModel(DrawingJson json) throws IOException {
 
+        // fill value ids
+        fillValueIds(json);
+
         // correct links
-        Map<Vertex.Id, Vertex> vertexMap = Stream.concat(Stream.concat(Stream.concat(json.getGraph().getObjects().stream(), json.getGraph().getLinks().stream()), json.getGraph().getAmounts().stream()), json.getGraph().getDefinitions().stream()).collect(Collectors.toMap(Vertex::getId, Function.identity()));
+        Map<Vertex.Id, Vertex> vertexMap = mapVertexIds(json);
         for (Link link: json.getGraph().getLinks()) {
             link.setOriginId(vertexMap.get(link.getOriginId()).getId());
             link.setDestinationId(vertexMap.get(link.getDestinationId()).getId());
@@ -108,6 +112,53 @@ public class Document {
                         .build())
                 .positions(positions)
                 .build();
+    }
+
+    private static void fillValueIds(DrawingJson json) {
+        Graph graph = json.getGraph();
+
+        for (Link link: graph.getLinks()) {
+
+            LowerValue originFactor = link.getOriginFactor();
+            int originFactorIdValue = ModelHandler.makeSameIdWithOtherMask(link.getId(), LowerValue.Id.LINK_ORIGIN_FACTOR_MASK);
+            originFactor.setId(new LowerValue.Id(originFactorIdValue, originFactor));
+
+            LowerValue destinationFactor = link.getDestinationFactor();
+            int destinationFactorIdValue = ModelHandler.makeSameIdWithOtherMask(link.getId(), LowerValue.Id.LINK_DESTINATION_FACTOR_MASK);
+            destinationFactor.setId(new LowerValue.Id(destinationFactorIdValue, destinationFactor));
+        }
+
+        for (Amount amount: graph.getAmounts()) {
+
+            WholeValue amountCount = amount.getCount();
+            int amountCountIdValue = ModelHandler.makeSameIdWithOtherMask(amount.getId(), WholeValue.Id.AMOUNT_COUNT_MASK);
+            amountCount.setId(new WholeValue.Id(amountCountIdValue, amountCount));
+
+            WholeValue amountDistinctCount = amount.getDistinctCount();
+            int amountDistinctCountIdValue = ModelHandler.makeSameIdWithOtherMask(amount.getId(), WholeValue.Id.AMOUNT_DISTINCT_COUNT_MASK);
+            amountDistinctCount.setId(new WholeValue.Id(amountDistinctCountIdValue, amountDistinctCount));
+        }
+
+        for (Definition definition: graph.getDefinitions()) {
+
+            LowerValue definitionCompleteness = definition.getCompleteness();
+            int definitionCompletenessIdValue = ModelHandler.makeSameIdWithOtherMask(definition.getId(), LowerValue.Id.DEFINITION_COMPLETENESS_MASK);
+            definitionCompleteness.setId(new LowerValue.Id(definitionCompletenessIdValue, definitionCompleteness));
+        }
+    }
+
+    private static Map<Vertex.Id, Vertex> mapVertexIds(DrawingJson json) {
+        Graph graph = json.getGraph();
+        Stream<? extends Vertex> vertexStream = graph.getObjects().stream();
+        vertexStream = Stream.concat(vertexStream, graph.getLinks().stream());
+        vertexStream = Stream.concat(vertexStream, graph.getAmounts().stream());
+        vertexStream = Stream.concat(vertexStream, graph.getDefinitions().stream());
+        vertexStream = Stream.concat(vertexStream, graph.getLinks().stream().map(Link::getOriginFactor));
+        vertexStream = Stream.concat(vertexStream, graph.getLinks().stream().map(Link::getDestinationFactor));
+        vertexStream = Stream.concat(vertexStream, graph.getAmounts().stream().map(Amount::getCount));
+        vertexStream = Stream.concat(vertexStream, graph.getAmounts().stream().map(Amount::getDistinctCount));
+        vertexStream = Stream.concat(vertexStream, graph.getDefinitions().stream().map(Definition::getCompleteness));
+        return vertexStream.collect(Collectors.toMap(Vertex::getId, Function.identity()));
     }
 
     private void listenToChanges() {

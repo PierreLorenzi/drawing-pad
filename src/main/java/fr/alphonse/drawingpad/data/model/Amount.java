@@ -3,8 +3,6 @@ package fr.alphonse.drawingpad.data.model;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
-import fr.alphonse.drawingpad.data.model.value.GraduatedValue;
-import fr.alphonse.drawingpad.data.model.value.WholeGraduation;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -21,9 +19,9 @@ public final class Amount extends Vertex {
     @JsonManagedReference
     private Amount.Id id;
 
-    private GraduatedValue<WholeGraduation> count;
+    private WholeValue count;
 
-    private GraduatedValue<WholeGraduation> distinctCount;
+    private WholeValue distinctCount;
 
     private Vertex.Id modelId;
 
