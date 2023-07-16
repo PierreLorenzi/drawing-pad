@@ -24,10 +24,11 @@ public class GraduatedValueComponent<T extends Enum<T> & Graduation<T>> extends 
 
     private static final Map<WholeGraduation, String> GRADUATION_NAMES = Map.of(
             WholeGraduation.ZERO, "0",
-            WholeGraduation.ZERO_INFINITY, "0+",
-            WholeGraduation.LOWER_NUMBER, "<",
+            WholeGraduation.LOWEST, "<<",
+            WholeGraduation.LOWER, "<",
             WholeGraduation.ONE, "1",
-            WholeGraduation.UPPER_NUMBER, ">",
+            WholeGraduation.GREATER, ">",
+            WholeGraduation.GREATEST, ">>",
             WholeGraduation.INFINITY, "∞"
     );
 
@@ -134,8 +135,8 @@ public class GraduatedValueComponent<T extends Enum<T> & Graduation<T>> extends 
 
     private boolean doesGraduationNeedsValue(T graduation) {
         return switch (graduation.getWholeGraduation()) {
-            case ZERO, ZERO_INFINITY, ONE, INFINITY -> false;
-            case LOWER_NUMBER, UPPER_NUMBER -> true;
+            case ZERO, LOWEST, ONE, GREATEST, INFINITY -> false;
+            case LOWER, GREATER -> true;
         };
     }
 }

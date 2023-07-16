@@ -84,10 +84,6 @@ public class DrawingComponent extends JComponent {
 
     private static final int GUIDE_MAGNETISM_RADIUS = 3;
 
-    private static final Vector AMOUNT_VECTOR = new Vector(26, 0);
-
-    private static final int AMOUNT_RADIUS = 9;
-
     public DrawingComponent(Drawing model, ChangeDetector changeDetector) {
         super();
         this.model = model;
@@ -201,7 +197,6 @@ public class DrawingComponent extends JComponent {
             switch (selectedVertex) {
                 case Object object -> ModelHandler.deleteObject(object, model);
                 case Link link -> ModelHandler.deleteLink(link, model);
-                case Amount amount -> ModelHandler.deleteAmount(amount, model);
                 case Definition definition -> ModelHandler.deleteDefinition(definition, model);
                 case WholeValue ignored -> throw new Error("Whole values not handled as real vertices");
                 case LowerValue ignored -> throw new Error("Lower values not handled as real vertices");
@@ -293,20 +288,6 @@ public class DrawingComponent extends JComponent {
         }
 
         ((Graphics2D)g).setStroke(BASIC_STROKE);
-        for (Amount amount: model.getGraph().getAmounts()) {
-            var position = findVertexPosition(amount);
-
-            g.setColor(Color.BLACK);
-            g.drawOval(position.x() - AMOUNT_RADIUS, position.y() - AMOUNT_RADIUS, 2*AMOUNT_RADIUS, 2*AMOUNT_RADIUS);
-
-            if (selectedVertices.contains(amount)) {
-                g.setColor(SELECTION_COLOR);
-            }
-            else {
-                g.setColor(Color.YELLOW);
-            }
-            g.fillOval(position.x() - AMOUNT_RADIUS, position.y() - AMOUNT_RADIUS, 2*AMOUNT_RADIUS, 2*AMOUNT_RADIUS);
-        }
 
         // draw link being dragged
         if (newLinkOrigin != null) {
@@ -333,7 +314,6 @@ public class DrawingComponent extends JComponent {
                 var position2 = findVertexPosition(link.getDestination());
                 yield Position.middle(position1, position2);
             }
-            case Amount amount -> findVertexPosition(amount.getModel()).translate(AMOUNT_VECTOR);
             case Definition definition -> {
                 var extremityVector = new Vector(0, -LOOP_CENTER_DISTANCE - LOOP_CIRCLE_RADIUS);
                 var basePosition = findVertexPosition(definition.getBase());
@@ -352,7 +332,6 @@ public class DrawingComponent extends JComponent {
         return switch (vertex) {
             case Object ignored -> computeArrowMeetingPositionWithObject(position1, position2);
             case Link ignored -> position2;
-            case Amount ignored -> computeArrowMeetingPositionWithAmount(position1, position2);
             case Definition ignored -> position2;
             case WholeValue ignored -> throw new Error("Whole values not handled as real vertices");
             case LowerValue ignored -> throw new Error("Lower values not handled as real vertices");
@@ -378,13 +357,6 @@ public class DrawingComponent extends JComponent {
                 return new Position(position2.x() + OBJECT_RADIUS * vector.x() / vector.y(), position2.y() + OBJECT_RADIUS);
             }
         }
-    }
-
-    private static Position computeArrowMeetingPositionWithAmount(Position position1, Position position2) {
-        var vector = Vector.between(position1, position2);
-        var distance = vector.length();
-        var arrowVector = vector.multiply((distance - AMOUNT_RADIUS) / distance);
-        return position1.translate(arrowVector);
     }
 
     private void drawLoop(Position position, Vertex vertex, Graphics g) {
@@ -428,18 +400,8 @@ public class DrawingComponent extends JComponent {
             }
             return;
         }
-        // if press with option, add amount
+        // if press with option, add definition
         if ((event.getModifiersEx() & KeyEvent.ALT_DOWN_MASK) != 0) {
-            if (selectedVertex == null) {
-                return;
-            }
-            if (ModelHandler.addAmount(selectedVertex, model)) {
-                changeDetector.notifyChange();
-            }
-            return;
-        }
-        // if press with control, add definition
-        if ((event.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0) {
             if (selectedVertex == null) {
                 return;
             }
@@ -492,10 +454,6 @@ public class DrawingComponent extends JComponent {
         if (object != null) {
             return object;
         }
-        Amount amount = findVertexAtPositionInList(position, model.getGraph().getAmounts());
-        if (amount != null) {
-            return amount;
-        }
         Definition definition = findVertexAtPositionInList(position, model.getGraph().getDefinitions());
         if (definition != null) {
             return definition;
@@ -515,7 +473,6 @@ public class DrawingComponent extends JComponent {
         return switch (vertex) {
             case Object object -> findPositionDistanceFromObject(position, object);
             case Link link -> findPositionDistanceFromLink(position, link);
-            case Amount amount -> findPositionDistanceFromAmount(position, amount);
             case Definition definition -> findPositionDistanceFromDefinition(position, definition);
             case WholeValue ignored -> throw new Error("Whole values not handled as real vertices");
             case LowerValue ignored -> throw new Error("Lower values not handled as real vertices");
@@ -546,12 +503,6 @@ public class DrawingComponent extends JComponent {
 
         float distanceFromLine = Math.abs(Vector.discriminant(positionVector, linkVector)) / linkLength;
         return (int)distanceFromLine;
-    }
-
-    private int findPositionDistanceFromAmount(Position position, Amount amount) {
-        var amountPosition = findVertexPosition(amount);
-        var vector = Vector.between(amountPosition, position);
-        return Math.round(vector.length());
     }
 
     private int findPositionDistanceFromDefinition(Position position, Definition definition) {
@@ -619,22 +570,17 @@ public class DrawingComponent extends JComponent {
 
     private void addLinksBetweenVertices(List<Vertex> vertices) {
         List<Link> linksToAdd;
-        List<Amount> amountsToAdd;
         List<Definition> definitionsToAdd;
         do {
             linksToAdd = model.getGraph().getLinks().stream()
                     .filter(link -> !vertices.contains(link) && vertices.contains(link.getOrigin()) && vertices.contains(link.getDestination()))
                     .toList();
-            amountsToAdd = model.getGraph().getAmounts().stream()
-                    .filter(amount -> !vertices.contains(amount) && vertices.contains(amount.getModel()))
-                    .toList();
             definitionsToAdd = model.getGraph().getDefinitions().stream()
                     .filter(definition -> !vertices.contains(definition) && vertices.contains(definition.getBase()))
                     .toList();
             vertices.addAll(linksToAdd);
-            vertices.addAll(amountsToAdd);
             vertices.addAll(definitionsToAdd);
-        } while (!linksToAdd.isEmpty() || !amountsToAdd.isEmpty() || !definitionsToAdd.isEmpty());
+        } while (!linksToAdd.isEmpty() || !definitionsToAdd.isEmpty());
     }
 
     private List<Integer> findNearbyGuideDeltas(Function<Position, Integer> coordinate) {

@@ -1,7 +1,7 @@
 package fr.alphonse.drawingpad.view;
 
-import fr.alphonse.drawingpad.data.model.*;
 import fr.alphonse.drawingpad.data.model.Object;
+import fr.alphonse.drawingpad.data.model.*;
 import fr.alphonse.drawingpad.data.model.value.LowerGraduation;
 import fr.alphonse.drawingpad.data.model.value.WholeGraduation;
 import fr.alphonse.drawingpad.document.utils.ChangeDetector;
@@ -26,19 +26,11 @@ public class InfoComponent extends JPanel {
 
     private JTextField linkNameField;
 
-    private GraduatedValueComponent<LowerGraduation> originFactorComponent;
+    private GraduatedValueComponent<WholeGraduation> factorComponent;
 
-    private GraduatedValueComponent<LowerGraduation> destinationFactorComponent;
-
-    private Amount selectedAmount = null;
+    private GraduatedValueComponent<WholeGraduation> quantityComponent;
 
     private Definition selectedDefinition = null;
-
-    private JTextField amountNameField;
-
-    private GraduatedValueComponent<WholeGraduation> amountCountComponent;
-
-    private GraduatedValueComponent<WholeGraduation> amountDistinctCountComponent;
 
     private JTextField definitionNameField;
 
@@ -54,8 +46,6 @@ public class InfoComponent extends JPanel {
 
     private static final String LINK_SELECTION_CARD = "link";
 
-    private static final String AMOUNT_SELECTION_CARD = "amount";
-
     private static final String DEFINITION_SELECTION_CARD = "definition";
 
     public InfoComponent(java.util.List<Vertex> selection, ChangeDetector changeDetector, ChangeDetector modelChangeDetector) {
@@ -70,7 +60,6 @@ public class InfoComponent extends JPanel {
         add(makeMultipleSelectionView(), MULTIPLE_SELECTION_CARD);
         add(makeObjectSelectionView(), OBJECT_SELECTION_CARD);
         add(makeLinkSelectionView(), LINK_SELECTION_CARD);
-        add(makeAmountSelectionView(), AMOUNT_SELECTION_CARD);
         add(makeDefinitionSelectionView(), DEFINITION_SELECTION_CARD);
         switchToCard(EMPTY_SELECTION_CARD);
 
@@ -139,66 +128,23 @@ public class InfoComponent extends JPanel {
         panel.add(textField);
         this.linkNameField = textField;
 
-        // origin factor
+        // factor
         panel.add(Box.createVerticalStrut(30));
-        JLabel originFactorLabel = new JLabel("Origin Factor:");
-        originFactorLabel.setForeground(Color.WHITE);
-        originFactorLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        panel.add(originFactorLabel);
-        originFactorComponent = new GraduatedValueComponent<>(LowerGraduation.class);
-        panel.add(originFactorComponent);
+        JLabel factorLabel = new JLabel("Factor:");
+        factorLabel.setForeground(Color.WHITE);
+        factorLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        panel.add(factorLabel);
+        factorComponent = new GraduatedValueComponent<>(WholeGraduation.class);
+        panel.add(factorComponent);
 
-        // destination factor
+        // quantity factor
         panel.add(Box.createVerticalStrut(30));
-        JLabel destinationFactorLabel = new JLabel("Destination Factor:");
-        destinationFactorLabel.setForeground(Color.WHITE);
-        destinationFactorLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        panel.add(destinationFactorLabel);
-        destinationFactorComponent = new GraduatedValueComponent<>(LowerGraduation.class);
-        panel.add(destinationFactorComponent);
-
-        panel.add(Box.createVerticalGlue());
-
-        return panel;
-    }
-
-    private JPanel makeAmountSelectionView() {
-        JPanel panel = new JPanel();
-        panel.setBackground(null);
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.add(Box.createVerticalStrut(50));
-
-        // name
-        JLabel nameLabel = new JLabel("Name:");
-        nameLabel.setForeground(Color.WHITE);
-        nameLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        panel.add(nameLabel);
-        JTextField textField = new JTextField();
-        textField.setMaximumSize(new Dimension(100000, 40));
-        textField.addActionListener(event -> {if (this.selectedAmount != null) {
-            this.selectedAmount.setName(textField.getText());
-            this.modelChangeDetector.notifyChange();
-        }});
-        panel.add(textField);
-        this.amountNameField = textField;
-
-        // count
-        panel.add(Box.createVerticalStrut(30));
-        JLabel countLabel = new JLabel("Count:");
-        countLabel.setForeground(Color.WHITE);
-        countLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        panel.add(countLabel);
-        amountCountComponent = new GraduatedValueComponent<>(WholeGraduation.class);
-        panel.add(amountCountComponent);
-
-        // distinct count
-        panel.add(Box.createVerticalStrut(30));
-        JLabel distinctCountLabel = new JLabel("Distinct Count:");
-        distinctCountLabel.setForeground(Color.WHITE);
-        distinctCountLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        panel.add(distinctCountLabel);
-        amountDistinctCountComponent = new GraduatedValueComponent<>(WholeGraduation.class);
-        panel.add(amountDistinctCountComponent);
+        JLabel quantityLabel = new JLabel("Quantity:");
+        quantityLabel.setForeground(Color.WHITE);
+        quantityLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        panel.add(quantityLabel);
+        quantityComponent = new GraduatedValueComponent<>(WholeGraduation.class);
+        panel.add(quantityComponent);
 
         panel.add(Box.createVerticalGlue());
 
@@ -265,10 +211,6 @@ public class InfoComponent extends JPanel {
                         switchToCard(LINK_SELECTION_CARD);
                         updateLinkSelectionView(link);
                     }
-                    case Amount amount -> {
-                        switchToCard(AMOUNT_SELECTION_CARD);
-                        updateAmountSelectionView(amount);
-                    }
                     case Definition definition -> {
                         switchToCard(DEFINITION_SELECTION_CARD);
                         updateDefinitionSelectionView(definition);
@@ -292,10 +234,9 @@ public class InfoComponent extends JPanel {
     private void updateMultipleSelectionView() {
         long objectCount = selection.stream().filter(id -> id instanceof Object).count();
         long linkCount = selection.stream().filter(id -> id instanceof Link).count();
-        long amountCount = selection.stream().filter(id -> id instanceof Amount).count();
         long definitionCount = selection.stream().filter(id -> id instanceof Definition).count();
-        long total = objectCount + linkCount + amountCount + definitionCount;
-        multipleSelectionLabel.setText(total + " elements in selection: " + objectCount + " objects, " + amountCount + " amounts, " + definitionCount + " definitions, " + linkCount + " links");
+        long total = objectCount + linkCount + definitionCount;
+        multipleSelectionLabel.setText(total + " elements in selection: " + objectCount + " objects, " + definitionCount + " definitions, " + linkCount + " links");
     }
 
     private void updateObjectSelectionView(Object object) {
@@ -306,15 +247,8 @@ public class InfoComponent extends JPanel {
     private void updateLinkSelectionView(Link link) {
         selectedLink = link;
         linkNameField.setText(link.getName());
-        originFactorComponent.setValue(link.getOriginFactor());
-        destinationFactorComponent.setValue(link.getDestinationFactor());
-    }
-
-    private void updateAmountSelectionView(Amount amount) {
-        selectedAmount = amount;
-        amountNameField.setText(amount.getName());
-        amountCountComponent.setValue(amount.getCount());
-        amountDistinctCountComponent.setValue(amount.getDistinctCount());
+        factorComponent.setValue(link.getFactor());
+        quantityComponent.setValue(link.getQuantity());
     }
 
     private void updateDefinitionSelectionView(Definition definition) {

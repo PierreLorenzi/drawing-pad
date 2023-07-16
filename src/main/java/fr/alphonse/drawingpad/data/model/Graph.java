@@ -17,7 +17,5 @@ public class Graph {
 
     private List<Link> links;
 
-    private List<Amount> amounts;
-
     private List<Definition> definitions;
 }

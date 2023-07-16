@@ -24,10 +24,11 @@ public final class Link extends Vertex {
     private Vertex.Id destinationId;
 
     // non null
-    private LowerValue originFactor;
+    // defines the direction of the link
+    private WholeValue factor;
 
     // non null
-    private LowerValue destinationFactor;
+    private WholeValue quantity;
 
     @JsonIgnore
     public Vertex getOrigin() {
@@ -51,9 +52,9 @@ public final class Link extends Vertex {
 
         public static final int MASK = 0x2_0000;
 
-        public static final int LINK_ORIGIN_FACTOR_MASK = 0x21_0000;
+        public static final int LINK_FACTOR_MASK = 0x21_0000;
 
-        public static final int LINK_DESTINATION_FACTOR_MASK = 0x22_0000;
+        public static final int LINK_QUANTITY_MASK = 0x22_0000;
 
         public Id(int value) {
             super(value);

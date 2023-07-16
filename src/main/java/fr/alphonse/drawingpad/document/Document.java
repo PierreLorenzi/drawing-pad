@@ -53,7 +53,6 @@ public class Document {
                 .graph(Graph.builder()
                         .objects(new ArrayList<>())
                         .links(new ArrayList<>())
-                        .amounts(new ArrayList<>())
                         .definitions(new ArrayList<>())
                         .build())
                 .positions(new HashMap<>())
@@ -87,11 +86,6 @@ public class Document {
             link.setDestinationId(vertexMap.get(link.getDestinationId()).getId());
         }
 
-        // correct amounts
-        for (Amount amount: json.getGraph().getAmounts()) {
-            amount.setModelId(vertexMap.get(amount.getModelId()).getId());
-        }
-
         // correct definitions
         for (Definition definition: json.getGraph().getDefinitions()) {
             definition.setBaseId(vertexMap.get(definition.getBaseId()).getId());
@@ -99,7 +93,6 @@ public class Document {
 
         List<Object> objects = new ArrayList<>(json.getGraph().getObjects());
         List<Link> links = new ArrayList<>(json.getGraph().getLinks());
-        List<Amount> amounts = new ArrayList<>(json.getGraph().getAmounts());
         List<Definition> definitions = new ArrayList<>(json.getGraph().getDefinitions());
         Map<Object, Position> positions = json.getPositions().keySet().stream().collect(Collectors.toMap(id -> (Object)vertexMap.get(id), json.getPositions()::get));
 
@@ -107,7 +100,6 @@ public class Document {
                 .graph(Graph.builder()
                         .objects(objects)
                         .links(links)
-                        .amounts(amounts)
                         .definitions(definitions)
                         .build())
                 .positions(positions)
@@ -119,24 +111,13 @@ public class Document {
 
         for (Link link: graph.getLinks()) {
 
-            LowerValue originFactor = link.getOriginFactor();
-            int originFactorIdValue = ModelHandler.makeSameIdWithOtherMask(link.getId(), Link.Id.LINK_ORIGIN_FACTOR_MASK);
-            originFactor.setId(new LowerValue.Id(originFactorIdValue, originFactor));
+            WholeValue factor = link.getFactor();
+            int factorIdValue = ModelHandler.makeSameIdWithOtherMask(link.getId(), Link.Id.LINK_FACTOR_MASK);
+            factor.setId(new WholeValue.Id(factorIdValue, factor));
 
-            LowerValue destinationFactor = link.getDestinationFactor();
-            int destinationFactorIdValue = ModelHandler.makeSameIdWithOtherMask(link.getId(), Link.Id.LINK_DESTINATION_FACTOR_MASK);
-            destinationFactor.setId(new LowerValue.Id(destinationFactorIdValue, destinationFactor));
-        }
-
-        for (Amount amount: graph.getAmounts()) {
-
-            WholeValue amountCount = amount.getCount();
-            int amountCountIdValue = ModelHandler.makeSameIdWithOtherMask(amount.getId(), Amount.Id.AMOUNT_COUNT_MASK);
-            amountCount.setId(new WholeValue.Id(amountCountIdValue, amountCount));
-
-            WholeValue amountDistinctCount = amount.getDistinctCount();
-            int amountDistinctCountIdValue = ModelHandler.makeSameIdWithOtherMask(amount.getId(), Amount.Id.AMOUNT_DISTINCT_COUNT_MASK);
-            amountDistinctCount.setId(new WholeValue.Id(amountDistinctCountIdValue, amountDistinctCount));
+            WholeValue quantity = link.getQuantity();
+            int quantityIdValue = ModelHandler.makeSameIdWithOtherMask(link.getId(), Link.Id.LINK_QUANTITY_MASK);
+            quantity.setId(new WholeValue.Id(quantityIdValue, quantity));
         }
 
         for (Definition definition: graph.getDefinitions()) {
@@ -155,12 +136,9 @@ public class Document {
         Graph graph = json.getGraph();
         Stream<? extends Vertex> vertexStream = graph.getObjects().stream();
         vertexStream = Stream.concat(vertexStream, graph.getLinks().stream());
-        vertexStream = Stream.concat(vertexStream, graph.getAmounts().stream());
         vertexStream = Stream.concat(vertexStream, graph.getDefinitions().stream());
-        vertexStream = Stream.concat(vertexStream, graph.getLinks().stream().map(Link::getOriginFactor));
-        vertexStream = Stream.concat(vertexStream, graph.getLinks().stream().map(Link::getDestinationFactor));
-        vertexStream = Stream.concat(vertexStream, graph.getAmounts().stream().map(Amount::getCount));
-        vertexStream = Stream.concat(vertexStream, graph.getAmounts().stream().map(Amount::getDistinctCount));
+        vertexStream = Stream.concat(vertexStream, graph.getLinks().stream().map(Link::getFactor));
+        vertexStream = Stream.concat(vertexStream, graph.getLinks().stream().map(Link::getQuantity));
         vertexStream = Stream.concat(vertexStream, graph.getDefinitions().stream().map(Definition::getLocalCompleteness));
         vertexStream = Stream.concat(vertexStream, graph.getDefinitions().stream().map(Definition::getGlobalCompleteness));
         return vertexStream.collect(Collectors.toMap(Vertex::getId, Function.identity()));

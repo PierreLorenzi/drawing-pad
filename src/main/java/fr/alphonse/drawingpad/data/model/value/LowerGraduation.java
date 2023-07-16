@@ -2,8 +2,8 @@ package fr.alphonse.drawingpad.data.model.value;
 
 public enum LowerGraduation implements Graduation<LowerGraduation> {
     ZERO(WholeGraduation.ZERO),
-    ZERO_INFINITY(WholeGraduation.ZERO_INFINITY),
-    LOWER_NUMBER(WholeGraduation.LOWER_NUMBER),
+    LOWEST(WholeGraduation.LOWEST),
+    LOWER(WholeGraduation.LOWER),
     ONE(WholeGraduation.ONE);
 
     private final WholeGraduation wholeGraduation;

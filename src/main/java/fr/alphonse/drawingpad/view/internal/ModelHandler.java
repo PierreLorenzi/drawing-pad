@@ -58,49 +58,23 @@ public class ModelHandler {
     private static Link makeLink(Vertex origin, Vertex destination, Drawing drawing) {
         var link = new Link();
         var id = new Link.Id(findAvailableVertexId(drawing.getGraph().getLinks(), Link.Id.MASK));
-        var originFactorId = new LowerValue.Id(makeSameIdWithOtherMask(id, Link.Id.LINK_ORIGIN_FACTOR_MASK));
-        var destinationFactorId = new LowerValue.Id(makeSameIdWithOtherMask(id, Link.Id.LINK_DESTINATION_FACTOR_MASK));
+        var factorId = new WholeValue.Id(makeSameIdWithOtherMask(id, Link.Id.LINK_FACTOR_MASK));
+        var quantityId = new WholeValue.Id(makeSameIdWithOtherMask(id, Link.Id.LINK_QUANTITY_MASK));
         link.setId(id);
         id.setState(link);
         link.setOrigin(origin);
         link.setDestination(destination);
-        link.setOriginFactor(LowerValue.builder()
-                        .id(originFactorId)
+        link.setFactor(WholeValue.builder()
+                        .id(factorId)
                 .build());
-        link.setDestinationFactor(LowerValue.builder()
-                .id(destinationFactorId)
+        link.setQuantity(WholeValue.builder()
+                .id(quantityId)
                 .build());
         return link;
     }
 
     public static int makeSameIdWithOtherMask(Vertex.Id id, int mask) {
         return (id.getValue() & ~Vertex.Id.TYPE_MASK) | mask;
-    }
-
-    public boolean addAmount(Vertex vertex, Drawing drawing) {
-        if (doesAmountExistWithVertex(vertex, drawing)) {
-            return false;
-        }
-        Amount amount = makeAmount(vertex, drawing);
-        drawing.getGraph().getAmounts().add(amount);
-        return true;
-    }
-
-    private boolean doesAmountExistWithVertex(Vertex vertex, Drawing drawing) {
-        return drawing.getGraph().getAmounts().stream().anyMatch(amount -> amount.getModelId().equals(vertex.getId()));
-    }
-
-    private static Amount makeAmount(Vertex vertex, Drawing drawing) {
-        var amount = new Amount();
-        var id = new Amount.Id(findAvailableVertexId(drawing.getGraph().getAmounts(), Amount.Id.MASK));
-        var countId = new WholeValue.Id(makeSameIdWithOtherMask(id, Amount.Id.AMOUNT_COUNT_MASK));
-        var distinctCountId = new WholeValue.Id(makeSameIdWithOtherMask(id, Amount.Id.AMOUNT_DISTINCT_COUNT_MASK));
-        amount.setId(id);
-        id.setState(amount);
-        amount.setModel(vertex);
-        amount.setCount(WholeValue.builder().id(countId).build());
-        amount.setDistinctCount(WholeValue.builder().id(distinctCountId).build());
-        return amount;
     }
 
     public boolean addDefinition(Vertex vertex, Drawing drawing) {
@@ -146,13 +120,6 @@ public class ModelHandler {
             }
         }
 
-        for (Amount amount: drawing.getGraph().getAmounts()) {
-            if (amount.getModel() == vertex) {
-                vertices.addAll(listDependentVertices(amount, drawing));
-                vertices.add(amount);
-            }
-        }
-
         for (Definition definition: drawing.getGraph().getDefinitions()) {
             if (definition.getBase() == vertex) {
                 vertices.addAll(listDependentVertices(definition, drawing));
@@ -168,7 +135,6 @@ public class ModelHandler {
             switch (vertex) {
                 case Object object -> drawing.getGraph().getObjects().remove(object);
                 case Link link -> drawing.getGraph().getLinks().remove(link);
-                case Amount amount -> drawing.getGraph().getAmounts().remove(amount);
                 case Definition definition -> drawing.getGraph().getDefinitions().remove(definition);
                 case WholeValue ignored -> throw new Error("Whole values not handled as real vertices");
                 case LowerValue ignored -> throw new Error("Lower values not handled as real vertices");
@@ -180,12 +146,6 @@ public class ModelHandler {
         List<Vertex> dependentVertices = listDependentVertices(link, drawing);
         removeVerticesFromDrawing(dependentVertices, drawing);
         drawing.getGraph().getLinks().remove(link);
-    }
-
-    public static void deleteAmount(Amount amount, Drawing drawing) {
-        List<Vertex> dependentVertices = listDependentVertices(amount, drawing);
-        removeVerticesFromDrawing(dependentVertices, drawing);
-        drawing.getGraph().getAmounts().remove(amount);
     }
 
     public static void deleteDefinition(Definition definition, Drawing drawing) {
