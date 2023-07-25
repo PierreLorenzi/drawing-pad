@@ -55,9 +55,11 @@ public class DrawingComponent extends JComponent {
 
     private static final int OBJECT_RADIUS = 10;
 
+    private static final float ARROW_DISTANCE = 20;
+
     private static final double ARROW_ANGLE = Math.toRadians(25);
 
-    private static final double ARROW_LENGTH = 13;
+    private static final float ARROW_LENGTH = 10;
 
     private static final BasicStroke SHADOW_STROKE = new BasicStroke(3);
 
@@ -231,7 +233,8 @@ public class DrawingComponent extends JComponent {
         if (newLinkOrigin != null) {
             var position1 = findVertexPosition(newLinkOrigin);
             Position position2 = findMousePosition();
-            drawLinkBetweenPositions(position1, position2, newLinkType, g, false);
+            var linePosition1 = computeArrowMeetingPositionWithVertex(position2, position1, newLinkOrigin);
+            drawLinkBetweenPositions(linePosition1, position2, newLinkType, g, false);
         }
 
         g.translate(-translationX, -translationY);
@@ -257,7 +260,7 @@ public class DrawingComponent extends JComponent {
         }
         g.drawLine(linePosition1.x(), linePosition1.y(), linePosition2.x(), linePosition2.y());
         if (type.equals(PossessionLink.class)) {
-            drawArrow(linePosition2, linePosition1, g);
+            drawArrow(linePosition1, linePosition2, g);
         }
     }
 
@@ -321,15 +324,18 @@ public class DrawingComponent extends JComponent {
         }
     }
 
-    private void drawArrow(Position position, Position origin, Graphics g) {
-        Vector lineVector = Vector.between(position, origin);
-        Vector baseVector = lineVector.multiply((float)ARROW_LENGTH / lineVector.length());
-        var arrowVector1 = baseVector.rotate(ARROW_ANGLE);
-        var arrowVector2 = baseVector.rotate(-ARROW_ANGLE);
-        var arrowPosition1 = position.translate(arrowVector1);
-        var arrowPosition2 = position.translate(arrowVector2);
-        g.drawLine(position.x(), position.y(), arrowPosition1.x(), arrowPosition1.y());
-        g.drawLine(position.x(), position.y(), arrowPosition2.x(), arrowPosition2.y());
+    private void drawArrow(Position origin, Position destination, Graphics g) {
+        Vector lineVector = Vector.between(origin, destination);
+        Vector arrowBaseVector = lineVector.multiply(ARROW_DISTANCE / lineVector.length());
+        Position arrowBase = origin.translate(arrowBaseVector);
+
+        Vector arrowFeatherBaseVector = lineVector.multiply(-ARROW_LENGTH / lineVector.length());
+        var arrowVector1 = arrowFeatherBaseVector.rotate(ARROW_ANGLE);
+        var arrowVector2 = arrowFeatherBaseVector.rotate(-ARROW_ANGLE);
+        var arrowPosition1 = arrowBase.translate(arrowVector1);
+        var arrowPosition2 = arrowBase.translate(arrowVector2);
+        g.drawLine(arrowBase.x(), arrowBase.y(), arrowPosition1.x(), arrowPosition1.y());
+        g.drawLine(arrowBase.x(), arrowBase.y(), arrowPosition2.x(), arrowPosition2.y());
     }
 
     private void reactToClick(MouseEvent event) {
@@ -354,6 +360,7 @@ public class DrawingComponent extends JComponent {
             }
             newLinkOrigin = selectedVertex;
             newLinkType = ComparisonLink.class;
+            return;
         }
         this.lastSelectedVertex = selectedVertex;
         boolean isShiftKeyPressed = (event.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) != 0;
