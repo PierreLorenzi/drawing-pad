@@ -61,11 +61,15 @@ public class DrawingComponent extends JComponent {
 
     private static final float ARROW_LENGTH = 10;
 
+    private static final int CIRCLE_RADIUS = 4;
+
     private static final BasicStroke SHADOW_STROKE = new BasicStroke(3);
 
     private static final BasicStroke SELECTED_LINK_STROKE = new BasicStroke(3);
 
-    private static final BasicStroke BASIC_STROKE = new BasicStroke(1);
+    private static final BasicStroke POSSESSION_STROKE = new BasicStroke(2);
+
+    private static final BasicStroke COMPARISON_STROKE = new BasicStroke(1);
 
     private static final int ARROW_KEY_DELTA = 1;
 
@@ -206,7 +210,6 @@ public class DrawingComponent extends JComponent {
             ((Graphics2D)g).setStroke(SHADOW_STROKE);
             g.drawLine(position.x()-OBJECT_RECTANGLE_RADIUS+2, position.y()+OBJECT_RECTANGLE_RADIUS, position.x()+OBJECT_RECTANGLE_RADIUS, position.y()+OBJECT_RECTANGLE_RADIUS);
             g.drawLine(position.x()+OBJECT_RECTANGLE_RADIUS, position.y()-OBJECT_RECTANGLE_RADIUS+2, position.x()+OBJECT_RECTANGLE_RADIUS, position.y()+OBJECT_RECTANGLE_RADIUS);
-            ((Graphics2D)g).setStroke(BASIC_STROKE);
 
             if (selectedVertices.contains(object)) {
                 g.setColor(SELECTION_COLOR);
@@ -226,8 +229,6 @@ public class DrawingComponent extends JComponent {
             boolean isSelected = selectedVertices.contains(comparisonLink);
             drawLink(comparisonLink, g, isSelected);
         }
-
-        ((Graphics2D)g).setStroke(BASIC_STROKE);
 
         // draw link being dragged
         if (newLinkOrigin != null) {
@@ -254,13 +255,15 @@ public class DrawingComponent extends JComponent {
             ((Graphics2D) g).setStroke(SELECTED_LINK_STROKE);
         }
         else {
-            Color color = (type.equals(PossessionLink.class)) ? Color.BLACK : Color.GRAY;
-            g.setColor(color);
-            ((Graphics2D) g).setStroke(BASIC_STROKE);
+            g.setColor((type.equals(PossessionLink.class)) ? Color.BLACK : Color.GRAY);
+            ((Graphics2D) g).setStroke((type.equals(PossessionLink.class)) ? POSSESSION_STROKE : COMPARISON_STROKE);
         }
         g.drawLine(linePosition1.x(), linePosition1.y(), linePosition2.x(), linePosition2.y());
         if (type.equals(PossessionLink.class)) {
-            drawArrow(linePosition1, linePosition2, g);
+            drawPossessionArrow(linePosition1, linePosition2, g);
+        }
+        else if (type.equals(ComparisonLink.class)) {
+            drawComparisonCircle(linePosition1, linePosition2, g);
         }
     }
 
@@ -324,7 +327,7 @@ public class DrawingComponent extends JComponent {
         }
     }
 
-    private void drawArrow(Position origin, Position destination, Graphics g) {
+    private void drawPossessionArrow(Position origin, Position destination, Graphics g) {
         Vector lineVector = Vector.between(origin, destination);
         Vector arrowBaseVector = lineVector.multiply(ARROW_DISTANCE / lineVector.length());
         Position arrowBase = origin.translate(arrowBaseVector);
@@ -336,6 +339,37 @@ public class DrawingComponent extends JComponent {
         var arrowPosition2 = arrowBase.translate(arrowVector2);
         g.drawLine(arrowBase.x(), arrowBase.y(), arrowPosition1.x(), arrowPosition1.y());
         g.drawLine(arrowBase.x(), arrowBase.y(), arrowPosition2.x(), arrowPosition2.y());
+    }
+
+    private void drawComparisonCircle(Position origin, Position destination, Graphics g) {
+        Position circleBase = computeCircleBase(origin, destination);
+        Color lineColor = g.getColor();
+        g.setColor(Color.WHITE);
+        g.fillOval(circleBase.x(), circleBase.y(), CIRCLE_RADIUS*2, CIRCLE_RADIUS*2);
+        g.setColor(lineColor);
+        g.drawOval(circleBase.x(), circleBase.y(), CIRCLE_RADIUS*2, CIRCLE_RADIUS*2);
+    }
+
+    private static Position computeCircleBase(Position position1, Position position2) {
+        Vector vector = Vector.between(position1, position2);
+        Vector circleCenterVector = vector.multiply(CIRCLE_RADIUS / vector.length());
+        boolean isHorizontal = Math.abs(vector.x()) > Math.abs(vector.y());
+        if (isHorizontal) {
+            if (vector.x() > 0) {
+                return position1.translate(new Vector(0, -CIRCLE_RADIUS + 2*circleCenterVector.y()));
+            }
+            else {
+                return position1.translate(new Vector(-2*CIRCLE_RADIUS, -CIRCLE_RADIUS + 2*circleCenterVector.y()));
+            }
+        }
+        else {
+            if (vector.y() > 0) {
+                return position1.translate(new Vector(-CIRCLE_RADIUS + circleCenterVector.x(), 0));
+            }
+            else {
+                return position1.translate(new Vector(-CIRCLE_RADIUS + circleCenterVector.x(), -2*CIRCLE_RADIUS));
+            }
+        }
     }
 
     private void reactToClick(MouseEvent event) {
