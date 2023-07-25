@@ -5,13 +5,15 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import fr.alphonse.drawingpad.data.Drawing;
 import fr.alphonse.drawingpad.data.DrawingJson;
 import fr.alphonse.drawingpad.data.geometry.Position;
-import fr.alphonse.drawingpad.data.model.*;
+import fr.alphonse.drawingpad.data.model.ComparisonLink;
+import fr.alphonse.drawingpad.data.model.Graph;
 import fr.alphonse.drawingpad.data.model.Object;
+import fr.alphonse.drawingpad.data.model.PossessionLink;
 import fr.alphonse.drawingpad.document.utils.ChangeDetector;
 import fr.alphonse.drawingpad.document.utils.DocumentUtils;
+import fr.alphonse.drawingpad.document.utils.GraphHandler;
 import fr.alphonse.drawingpad.view.DrawingComponent;
 import fr.alphonse.drawingpad.view.InfoComponent;
-import fr.alphonse.drawingpad.view.internal.ModelHandler;
 
 import javax.swing.*;
 import java.awt.*;
@@ -22,9 +24,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.*;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class Document {
 
@@ -52,8 +52,8 @@ public class Document {
         this.model = Drawing.builder()
                 .graph(Graph.builder()
                         .objects(new ArrayList<>())
-                        .links(new ArrayList<>())
-                        .definitions(new ArrayList<>())
+                        .possessionLinks(new ArrayList<>())
+                        .comparisonLinks(new ArrayList<>())
                         .build())
                 .positions(new HashMap<>())
                 .build();
@@ -76,72 +76,57 @@ public class Document {
 
     private static Drawing mapJsonToModel(DrawingJson json) throws IOException {
 
-        // fill value ids
-        fillValueIds(json);
+        Graph graph = json.getGraph();
 
-        // correct links
-        Map<Vertex.Id, Vertex> vertexMap = mapVertexIds(json);
-        for (Link link: json.getGraph().getLinks()) {
-            link.setOriginId(vertexMap.get(link.getOriginId()).getId());
-            link.setDestinationId(vertexMap.get(link.getDestinationId()).getId());
-        }
+        // resolve references
+        fillLinkEnds(graph);
+        fillValueOwners(graph);
 
-        // correct definitions
-        for (Definition definition: json.getGraph().getDefinitions()) {
-            definition.setBaseId(vertexMap.get(definition.getBaseId()).getId());
-        }
-
-        List<Object> objects = new ArrayList<>(json.getGraph().getObjects());
-        List<Link> links = new ArrayList<>(json.getGraph().getLinks());
-        List<Definition> definitions = new ArrayList<>(json.getGraph().getDefinitions());
-        Map<Object, Position> positions = json.getPositions().keySet().stream().collect(Collectors.toMap(id -> (Object)vertexMap.get(id), json.getPositions()::get));
+        // copy lists
+        List<Object> objects = new ArrayList<>(graph.getObjects());
+        List<PossessionLink> possessionLinks = new ArrayList<>(graph.getPossessionLinks());
+        List<ComparisonLink> comparisonLinks = new ArrayList<>(graph.getComparisonLinks());
+        Map<Object, Position> positions = json.getPositions().keySet().stream().collect(Collectors.toMap(id -> findObjectWithId(graph, id), json.getPositions()::get));
 
         return Drawing.builder()
                 .graph(Graph.builder()
                         .objects(objects)
-                        .links(links)
-                        .definitions(definitions)
+                        .possessionLinks(possessionLinks)
+                        .comparisonLinks(comparisonLinks)
                         .build())
                 .positions(positions)
                 .build();
     }
 
-    private static void fillValueIds(DrawingJson json) {
-        Graph graph = json.getGraph();
-
-        for (Link link: graph.getLinks()) {
-
-            WholeValue factor = link.getFactor();
-            int factorIdValue = ModelHandler.makeSameIdWithOtherMask(link.getId(), Link.Id.LINK_FACTOR_MASK);
-            factor.setId(new WholeValue.Id(factorIdValue, factor));
-
-            WholeValue quantity = link.getQuantity();
-            int quantityIdValue = ModelHandler.makeSameIdWithOtherMask(link.getId(), Link.Id.LINK_QUANTITY_MASK);
-            quantity.setId(new WholeValue.Id(quantityIdValue, quantity));
+    private static void fillLinkEnds(Graph graph) {
+        for (PossessionLink possessionLink: graph.getPossessionLinks()) {
+            possessionLink.setOrigin(GraphHandler.findReference(possessionLink.getOriginReference(), graph));
+            possessionLink.setDestination(GraphHandler.findReference(possessionLink.getDestinationReference(), graph));
         }
-
-        for (Definition definition: graph.getDefinitions()) {
-
-            LowerValue definitionLocalCompleteness = definition.getLocalCompleteness();
-            int definitionLocalCompletenessIdValue = ModelHandler.makeSameIdWithOtherMask(definition.getId(), Definition.Id.DEFINITION_LOCAL_COMPLETENESS_MASK);
-            definitionLocalCompleteness.setId(new LowerValue.Id(definitionLocalCompletenessIdValue, definitionLocalCompleteness));
-
-            LowerValue definitionGlobalCompleteness = definition.getGlobalCompleteness();
-            int definitionGlobalCompletenessIdValue = ModelHandler.makeSameIdWithOtherMask(definition.getId(), Definition.Id.DEFINITION_GLOBAL_COMPLETENESS_MASK);
-            definitionGlobalCompleteness.setId(new LowerValue.Id(definitionGlobalCompletenessIdValue, definitionGlobalCompleteness));
+        for (ComparisonLink comparisonLink: graph.getComparisonLinks()) {
+            comparisonLink.setOrigin(GraphHandler.findReference(comparisonLink.getOriginReference(), graph));
+            comparisonLink.setDestination(GraphHandler.findReference(comparisonLink.getDestinationReference(), graph));
         }
     }
 
-    private static Map<Vertex.Id, Vertex> mapVertexIds(DrawingJson json) {
-        Graph graph = json.getGraph();
-        Stream<? extends Vertex> vertexStream = graph.getObjects().stream();
-        vertexStream = Stream.concat(vertexStream, graph.getLinks().stream());
-        vertexStream = Stream.concat(vertexStream, graph.getDefinitions().stream());
-        vertexStream = Stream.concat(vertexStream, graph.getLinks().stream().map(Link::getFactor));
-        vertexStream = Stream.concat(vertexStream, graph.getLinks().stream().map(Link::getQuantity));
-        vertexStream = Stream.concat(vertexStream, graph.getDefinitions().stream().map(Definition::getLocalCompleteness));
-        vertexStream = Stream.concat(vertexStream, graph.getDefinitions().stream().map(Definition::getGlobalCompleteness));
-        return vertexStream.collect(Collectors.toMap(Vertex::getId, Function.identity()));
+    private static Object findObjectWithId(Graph graph, int id) {
+        return graph.getObjects().stream()
+                .filter(object -> object.getId() == id)
+                .findFirst().orElseThrow();
+    }
+
+    private static void fillValueOwners(Graph graph) {
+        for (Object object: graph.getObjects()) {
+            object.getCompleteness().setOwner(object);
+            object.getQuantity().setOwner(object);
+            object.getQuantity().getCompleteness().setOwner(object.getQuantity());
+        }
+        for (PossessionLink possessionLink: graph.getPossessionLinks()) {
+            possessionLink.getCompleteness().setOwner(possessionLink);
+        }
+        for (ComparisonLink comparisonLink: graph.getComparisonLinks()) {
+            comparisonLink.getCompleteness().setOwner(comparisonLink);
+        }
     }
 
     private void listenToChanges() {

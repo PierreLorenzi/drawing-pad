@@ -1,6 +1,5 @@
 package fr.alphonse.drawingpad.data.model;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import fr.alphonse.drawingpad.data.model.value.GraduatedValue;
 import fr.alphonse.drawingpad.data.model.value.LowerGraduation;
@@ -14,37 +13,11 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
-@EqualsAndHashCode(callSuper = true)
-public final class LowerValue extends Vertex implements GraduatedValue<LowerGraduation> {
+@EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
+public final class LowerValue extends Vertex {
+
+    private GraduatedValue<LowerGraduation> value;
 
     @JsonIgnore
-    private LowerValue.Id id;
-
-    private LowerGraduation graduation;
-
-    // > 1
-    private Double numberInGraduation;
-
-    public static final class Id extends Vertex.Id {
-
-        public Id(int value) {
-            super(value);
-        }
-
-        public Id(String string) {
-            super(Integer.parseInt(string));
-        }
-
-        public Id(int value, LowerValue state) {
-            super(value);
-            this.state = state;
-        }
-
-        @JsonBackReference
-        private transient LowerValue state;
-
-        public LowerValue state() {
-            return state;
-        }
-    }
+    private Vertex owner;
 }

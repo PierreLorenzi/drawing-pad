@@ -1,12 +1,19 @@
 package fr.alphonse.drawingpad.data.model.value;
 
-public interface GraduatedValue<T extends Enum<T> & Graduation<T>> {
+import fr.alphonse.drawingpad.data.model.Vertex;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-    T getGraduation();
 
-    void setGraduation(T value);
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class GraduatedValue<T extends Enum<T> & Graduation<T>> {
 
-    Double getNumberInGraduation();
+    private T graduation;
 
-    void setNumberInGraduation(Double value);
+    private Double numberInGraduation;
 }

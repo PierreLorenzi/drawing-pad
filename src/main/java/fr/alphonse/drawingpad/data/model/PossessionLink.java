@@ -1,8 +1,10 @@
 package fr.alphonse.drawingpad.data.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import fr.alphonse.drawingpad.data.model.link.Link;
+import fr.alphonse.drawingpad.data.model.reference.Reference;
 import fr.alphonse.drawingpad.data.model.value.GraduatedValue;
-import fr.alphonse.drawingpad.data.model.value.WholeGraduation;
+import fr.alphonse.drawingpad.data.model.value.LowerGraduation;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -14,10 +16,17 @@ import lombok.experimental.SuperBuilder;
 @AllArgsConstructor
 @SuperBuilder
 @EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
-public final class WholeValue extends Vertex {
+public final class PossessionLink extends Vertex implements Link {
 
-    private GraduatedValue<WholeGraduation> value;
+    private Reference originReference;
+
+    private Reference destinationReference;
+
+    private GraduatedValue<LowerGraduation> factor;
 
     @JsonIgnore
-    private Vertex owner;
+    public Vertex origin;
+
+    @JsonIgnore
+    public Vertex destination;
 }

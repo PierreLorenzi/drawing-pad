@@ -1,7 +1,5 @@
 package fr.alphonse.drawingpad.data.model;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -11,11 +9,14 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
-public sealed abstract class Vertex permits Object, Link, Definition, WholeValue, LowerValue {
+public sealed abstract class Vertex permits Object, PossessionLink, ComparisonLink, WholeValue, LowerValue {
 
-    public abstract Id getId();
+    public Integer id;
 
     private String name;
+
+    // inside there is no completeness and no quantity
+    private LowerValue completeness;
 
     @Override
     public boolean equals(java.lang.Object o) {
@@ -24,56 +25,6 @@ public sealed abstract class Vertex permits Object, Link, Definition, WholeValue
 
     @Override
     public int hashCode() {
-        return getId().hashCode();
-    }
-
-    public static sealed abstract class Id permits Object.Id, Link.Id, Definition.Id, WholeValue.Id, LowerValue.Id {
-        private final int value;
-
-        public static final int TYPE_MASK = 0xF_0000;
-
-        protected Id(int value) {
-            this.value = value;
-        }
-
-        @JsonCreator
-        public static Vertex.Id makeVertexId(String string) {
-            int value = Integer.parseInt(string);
-            int typeMaskValue = value & TYPE_MASK;
-            return switch (typeMaskValue) {
-                case Object.Id.MASK -> new Object.Id(value);
-                case Link.Id.MASK -> new Link.Id(value);
-                case Definition.Id.MASK -> new Definition.Id(value);
-                case Link.Id.LINK_FACTOR_MASK -> new WholeValue.Id(value);
-                case Link.Id.LINK_QUANTITY_MASK -> new WholeValue.Id(value);
-                case Definition.Id.DEFINITION_LOCAL_COMPLETENESS_MASK -> new LowerValue.Id(value);
-                case Definition.Id.DEFINITION_GLOBAL_COMPLETENESS_MASK -> new LowerValue.Id(value);
-                default -> throw new Error("Unknown type mask: " + typeMaskValue);
-            };
-        }
-
-        @JsonValue
-        public String getString() {
-            return "" + value;
-        }
-
-        public int getValue() {
-            return value;
-        }
-
-        public abstract Vertex state();
-
-        @Override
-        public boolean equals(java.lang.Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            Vertex.Id id = (Vertex.Id) o;
-            return value == id.value;
-        }
-
-        @Override
-        public int hashCode() {
-            return value;
-        }
+        return System.identityHashCode(this);
     }
 }

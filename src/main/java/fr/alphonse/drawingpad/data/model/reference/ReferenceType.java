@@ -1,0 +1,12 @@
+package fr.alphonse.drawingpad.data.model.reference;
+
+public enum ReferenceType {
+    OBJECT,
+    OBJECT_COMPLETENESS,
+    OBJECT_QUANTITY,
+    OBJECT_QUANTITY_COMPLETENESS,
+    POSSESSION_LINK,
+    POSSESSION_LINK_COMPLETENESS,
+    COMPARISON_LINK,
+    COMPARISON_LINK_COMPLETENESS;
+}

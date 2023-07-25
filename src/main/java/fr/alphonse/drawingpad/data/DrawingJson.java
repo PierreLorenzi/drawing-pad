@@ -20,5 +20,5 @@ public class DrawingJson {
 
     private Graph graph;
 
-    private Map<Object.Id, Position> positions;
+    private Map<Integer, Position> positions;
 }

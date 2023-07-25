@@ -1,7 +1,5 @@
 package fr.alphonse.drawingpad.data.model;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -12,33 +10,12 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
 public final class Object extends Vertex {
 
-    @JsonManagedReference
-    private Object.Id id;
+    // this value can be set but can't be reached by links
+    // takes 3/4 of the global completeness
+    private LowerValue localCompleteness;
 
-    public static final class Id extends Vertex.Id {
-
-        public static final int MASK = 0x1_0000;
-
-        public Id(int value) {
-            super(value);
-        }
-
-        public Id(String string) {
-            super(Integer.parseInt(string));
-        }
-
-        @JsonBackReference
-        private transient Object state;
-
-        public Object state() {
-            return state;
-        }
-
-        public void setState(Object state) {
-            this.state = state;
-        }
-    }
+    private WholeValue quantity;
 }
