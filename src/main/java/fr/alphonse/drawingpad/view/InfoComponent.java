@@ -6,6 +6,7 @@ import fr.alphonse.drawingpad.data.model.value.LowerGraduation;
 import fr.alphonse.drawingpad.data.model.value.WholeGraduation;
 import fr.alphonse.drawingpad.document.utils.ChangeDetector;
 import fr.alphonse.drawingpad.view.internal.GraduatedValueComponent;
+import fr.alphonse.drawingpad.view.internal.LinkEndComponent;
 
 import javax.swing.*;
 import java.awt.*;
@@ -30,6 +31,8 @@ public class InfoComponent extends JPanel {
 
     private PossessionLink selectedPossessionLink = null;
 
+    private LinkEndComponent possessionLinkEndComponent;
+
     private JTextField possessionLinkNameField;
 
     private GraduatedValueComponent<LowerGraduation> possessionLinkCompletenessComponent;
@@ -37,6 +40,8 @@ public class InfoComponent extends JPanel {
     private GraduatedValueComponent<LowerGraduation> possessionLinkFactorComponent;
 
     private ComparisonLink selectedComparisonLink = null;
+
+    private LinkEndComponent comparisonLinkEndComponent;
 
     private JTextField comparisonLinkNameField;
 
@@ -162,6 +167,13 @@ public class InfoComponent extends JPanel {
 
     private JPanel makePossessionLinkSelectionView() {
         JPanel panel = makeInfoPanel();
+
+        // link end
+        possessionLinkEndComponent = new LinkEndComponent();
+        possessionLinkEndComponent.setChangeListener(this.modelChangeDetector::notifyChange);
+        panel.add(possessionLinkEndComponent);
+
+        // name completeness
         VertexFieldSet vertexFieldSet = makeVertexFields(panel);
         vertexFieldSet.name().addActionListener(event -> {if (this.selectedPossessionLink != null) {
             this.selectedPossessionLink.setName(vertexFieldSet.name().getText());
@@ -186,6 +198,13 @@ public class InfoComponent extends JPanel {
 
     private JPanel makeComparisonLinkSelectionView() {
         JPanel panel = makeInfoPanel();
+
+        // link end
+        comparisonLinkEndComponent = new LinkEndComponent();
+        comparisonLinkEndComponent.setChangeListener(this.modelChangeDetector::notifyChange);
+        panel.add(comparisonLinkEndComponent);
+
+        // name completeness
         VertexFieldSet vertexFieldSet = makeVertexFields(panel);
         vertexFieldSet.name().addActionListener(event -> {if (this.selectedComparisonLink != null) {
             this.selectedComparisonLink.setName(vertexFieldSet.name().getText());
@@ -263,6 +282,7 @@ public class InfoComponent extends JPanel {
 
     private void updatePossessionLinkSelectionView(PossessionLink possessionLink) {
         selectedPossessionLink = possessionLink;
+        possessionLinkEndComponent.setDisplayedLink(possessionLink);
         possessionLinkNameField.setText(possessionLink.getName());
         possessionLinkCompletenessComponent.setValue(possessionLink.getCompleteness().getValue());
         possessionLinkFactorComponent.setValue(possessionLink.getFactor());
@@ -270,6 +290,7 @@ public class InfoComponent extends JPanel {
 
     private void updateComparisonLinkSelectionView(ComparisonLink comparisonLink) {
         selectedComparisonLink = comparisonLink;
+        comparisonLinkEndComponent.setDisplayedLink(comparisonLink);
         comparisonLinkNameField.setText(comparisonLink.getName());
         comparisonLinkCompletenessComponent.setValue(comparisonLink.getCompleteness().getValue());
         comparisonLinkFactorComponent.setValue(comparisonLink.getFactor());

@@ -11,7 +11,7 @@ import lombok.experimental.SuperBuilder;
 @AllArgsConstructor
 @SuperBuilder
 @EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
-public final class LowerValue extends Vertex {
+public final class LowerValue extends Vertex implements Value {
 
     private GraduatedValue<LowerGraduation> value;
 

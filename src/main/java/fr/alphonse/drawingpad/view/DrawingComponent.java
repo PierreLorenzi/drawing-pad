@@ -311,8 +311,8 @@ public class DrawingComponent extends JComponent {
                 var position2 = findVertexPosition(comparisonLink.getDestination());
                 yield Position.middle(position1, position2);
             }
-            case WholeValue ignored -> throw new Error("Whole values not handled as real vertices");
-            case LowerValue ignored -> throw new Error("Lower values not handled as real vertices");
+            case WholeValue value -> findVertexPosition(value.getOwner());
+            case LowerValue value -> findVertexPosition(value.getOwner());
         };
     }
 
@@ -325,8 +325,8 @@ public class DrawingComponent extends JComponent {
             case Object ignored -> computeArrowMeetingPositionWithObject(position1, position2);
             case PossessionLink ignored -> position2;
             case ComparisonLink ignored -> position2;
-            case WholeValue ignored -> throw new Error("Whole values not handled as real vertices");
-            case LowerValue ignored -> throw new Error("Lower values not handled as real vertices");
+            case WholeValue value -> computeArrowMeetingPositionWithVertex(position1, position2, value.getOwner());
+            case LowerValue value -> computeArrowMeetingPositionWithVertex(position1, position2, value.getOwner());
         };
     }
 

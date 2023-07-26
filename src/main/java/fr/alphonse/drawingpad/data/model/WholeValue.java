@@ -11,7 +11,7 @@ import lombok.experimental.SuperBuilder;
 @AllArgsConstructor
 @SuperBuilder
 @EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
-public final class WholeValue extends Vertex {
+public final class WholeValue extends Vertex implements Value {
 
     private GraduatedValue<WholeGraduation> value;
 
