@@ -3,10 +3,7 @@ package fr.alphonse.drawingpad.data.model;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import fr.alphonse.drawingpad.data.model.value.GraduatedValue;
 import fr.alphonse.drawingpad.data.model.value.WholeGraduation;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 @Data
@@ -19,5 +16,6 @@ public final class WholeValue extends Vertex {
     private GraduatedValue<WholeGraduation> value;
 
     @JsonIgnore
+    @ToString.Exclude
     private Vertex owner;
 }
