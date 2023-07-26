@@ -54,12 +54,15 @@ public class ModelHandler {
         return 1 + maxId;
     }
 
-    public boolean addPossessionLink(Vertex origin, Vertex destination, Drawing drawing) {
+    public boolean addPossessionLink(Vertex origin, Position center, Vertex destination, Drawing drawing) {
         if (doesPossessionLinkExistWithObjects(origin, destination, drawing)) {
             return false;
         }
         PossessionLink possessionLink = makePossessionLink(origin, destination, drawing);
         drawing.getGraph().getPossessionLinks().add(possessionLink);
+        if (center != null) {
+            drawing.getPossessionLinkCenters().put(possessionLink, center);
+        }
         return true;
     }
 
@@ -109,12 +112,15 @@ public class ModelHandler {
         return vertex.getId();
     }
 
-    public boolean addComparisonLink(Vertex origin, Vertex destination, Drawing drawing) {
+    public boolean addComparisonLink(Vertex origin, Position center, Vertex destination, Drawing drawing) {
         if (doesComparisonLinkExistWithObjects(origin, destination, drawing)) {
             return false;
         }
         ComparisonLink comparisonLink = makeComparisonLink(origin, destination, drawing);
         drawing.getGraph().getComparisonLinks().add(comparisonLink);
+        if (center != null) {
+            drawing.getComparisonLinkCenters().put(comparisonLink, center);
+        }
         return true;
     }
 
@@ -148,6 +154,10 @@ public class ModelHandler {
     public static void deleteObject(Object object, Drawing drawing) {
         List<Vertex> dependentVertices = listDependentVertices(object, drawing);
         removeVerticesFromDrawing(dependentVertices, drawing);
+        deleteObjectWithoutDependents(object, drawing);
+    }
+
+    public static void deleteObjectWithoutDependents(Object object, Drawing drawing) {
         drawing.getGraph().getObjects().remove(object);
         drawing.getPositions().remove(object);
     }
@@ -183,9 +193,9 @@ public class ModelHandler {
     private static void removeVerticesFromDrawing(List<Vertex> vertices, Drawing drawing) {
         for (Vertex vertex: vertices) {
             switch (vertex) {
-                case Object object -> drawing.getGraph().getObjects().remove(object);
-                case PossessionLink possessionLink -> drawing.getGraph().getPossessionLinks().remove(possessionLink);
-                case ComparisonLink comparisonLink -> drawing.getGraph().getComparisonLinks().remove(comparisonLink);
+                case Object object -> deleteObjectWithoutDependents(object, drawing);
+                case PossessionLink possessionLink -> deletePossessionLinkWithoutDependents(possessionLink, drawing);
+                case ComparisonLink comparisonLink -> deleteComparisonLinkWithoutDependents(comparisonLink, drawing);
                 case WholeValue ignored -> throw new Error("Whole values not handled as real vertices");
                 case LowerValue ignored -> throw new Error("Lower values not handled as real vertices");
             }
@@ -195,12 +205,22 @@ public class ModelHandler {
     public static void deletePossessionLink(PossessionLink possessionLink, Drawing drawing) {
         List<Vertex> dependentVertices = listDependentVertices(possessionLink, drawing);
         removeVerticesFromDrawing(dependentVertices, drawing);
+        deletePossessionLinkWithoutDependents(possessionLink, drawing);
+    }
+
+    public static void deletePossessionLinkWithoutDependents(PossessionLink possessionLink, Drawing drawing) {
         drawing.getGraph().getPossessionLinks().remove(possessionLink);
+        drawing.getPossessionLinkCenters().remove(possessionLink);
     }
 
     public static void deleteComparisonLink(ComparisonLink comparisonLink, Drawing drawing) {
         List<Vertex> dependentVertices = listDependentVertices(comparisonLink, drawing);
         removeVerticesFromDrawing(dependentVertices, drawing);
+        deleteComparisonLinkWithoutDependents(comparisonLink, drawing);
+    }
+
+    public static void deleteComparisonLinkWithoutDependents(ComparisonLink comparisonLink, Drawing drawing) {
         drawing.getGraph().getComparisonLinks().remove(comparisonLink);
+        drawing.getComparisonLinkCenters().remove(comparisonLink);
     }
 }

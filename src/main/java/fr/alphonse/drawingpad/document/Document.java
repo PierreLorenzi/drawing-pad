@@ -56,6 +56,8 @@ public class Document {
                         .comparisonLinks(new ArrayList<>())
                         .build())
                 .positions(new HashMap<>())
+                .possessionLinkCenters(new HashMap<>())
+                .comparisonLinkCenters(new HashMap<>())
                 .build();
         this.changeDetector = new ChangeDetector(model);
         this.windowName = windowName;
@@ -87,6 +89,8 @@ public class Document {
         List<PossessionLink> possessionLinks = new ArrayList<>(graph.getPossessionLinks());
         List<ComparisonLink> comparisonLinks = new ArrayList<>(graph.getComparisonLinks());
         Map<Object, Position> positions = json.getPositions().keySet().stream().collect(Collectors.toMap(id -> findObjectWithId(graph, id), json.getPositions()::get));
+        Map<PossessionLink, Position> possessionLinkCenters = json.getPossessionLinkCenters().keySet().stream().collect(Collectors.toMap(id -> findPossessionLinkWithId(graph, id), json.getPossessionLinkCenters()::get));
+        Map<ComparisonLink, Position> comparisonLinkCenters = json.getComparisonLinkCenters().keySet().stream().collect(Collectors.toMap(id -> findComparisonLinkWithId(graph, id), json.getComparisonLinkCenters()::get));
 
         return Drawing.builder()
                 .graph(Graph.builder()
@@ -95,6 +99,8 @@ public class Document {
                         .comparisonLinks(comparisonLinks)
                         .build())
                 .positions(positions)
+                .possessionLinkCenters(possessionLinkCenters)
+                .comparisonLinkCenters(comparisonLinkCenters)
                 .build();
     }
 
@@ -112,6 +118,18 @@ public class Document {
     private static Object findObjectWithId(Graph graph, int id) {
         return graph.getObjects().stream()
                 .filter(object -> object.getId() == id)
+                .findFirst().orElseThrow();
+    }
+
+    private static PossessionLink findPossessionLinkWithId(Graph graph, int id) {
+        return graph.getPossessionLinks().stream()
+                .filter(link -> link.getId() == id)
+                .findFirst().orElseThrow();
+    }
+
+    private static ComparisonLink findComparisonLinkWithId(Graph graph, int id) {
+        return graph.getComparisonLinks().stream()
+                .filter(link -> link.getId() == id)
                 .findFirst().orElseThrow();
     }
 
@@ -329,6 +347,10 @@ public class Document {
                 .graph(model.getGraph())
                 .positions(model.getPositions().keySet().stream()
                         .collect(Collectors.toMap(Object::getId,model.getPositions()::get)))
+                .possessionLinkCenters(model.getPossessionLinkCenters().keySet().stream()
+                        .collect(Collectors.toMap(PossessionLink::getId,model.getPossessionLinkCenters()::get)))
+                .comparisonLinkCenters(model.getComparisonLinkCenters().keySet().stream()
+                        .collect(Collectors.toMap(ComparisonLink::getId,model.getComparisonLinkCenters()::get)))
                 .build();
     }
 

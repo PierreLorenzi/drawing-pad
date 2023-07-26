@@ -1,7 +1,6 @@
 package fr.alphonse.drawingpad.data.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import fr.alphonse.drawingpad.data.model.link.Link;
 import fr.alphonse.drawingpad.data.model.reference.Reference;
 import fr.alphonse.drawingpad.data.model.value.GraduatedValue;
 import fr.alphonse.drawingpad.data.model.value.LowerGraduation;

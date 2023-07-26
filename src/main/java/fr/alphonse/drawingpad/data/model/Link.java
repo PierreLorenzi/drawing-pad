@@ -1,8 +1,8 @@
-package fr.alphonse.drawingpad.data.model.link;
+package fr.alphonse.drawingpad.data.model;
 
 import fr.alphonse.drawingpad.data.model.Vertex;
 
-public interface Link {
+public sealed interface Link permits PossessionLink, ComparisonLink {
 
     Vertex getOrigin();
 

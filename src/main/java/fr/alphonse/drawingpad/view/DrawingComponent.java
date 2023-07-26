@@ -5,7 +5,7 @@ import fr.alphonse.drawingpad.data.geometry.Position;
 import fr.alphonse.drawingpad.data.geometry.Vector;
 import fr.alphonse.drawingpad.data.model.*;
 import fr.alphonse.drawingpad.data.model.Object;
-import fr.alphonse.drawingpad.data.model.link.Link;
+import fr.alphonse.drawingpad.data.model.Link;
 import fr.alphonse.drawingpad.document.utils.ChangeDetector;
 import fr.alphonse.drawingpad.view.internal.ModelHandler;
 
@@ -45,7 +45,11 @@ public class DrawingComponent extends JComponent {
 
     private Vertex newLinkOrigin = null;
 
+    private Position newLinkCenter = null;
+
     private Class<? extends Link> newLinkType = null;
+
+    private Link draggedCenterLink = null;
 
     private final List<Integer> guidesX = new ArrayList<>();
 
@@ -84,6 +88,8 @@ public class DrawingComponent extends JComponent {
     private static final Color SELECTION_COLOR = Color.getHSBColor(206f/360, 1f, .9f);
 
     private static final int GUIDE_MAGNETISM_RADIUS = 3;
+
+    private static final int LINK_CENTER_CLICK_RADIUS = 8;
 
     public DrawingComponent(Drawing model, ChangeDetector changeDetector) {
         super();
@@ -124,7 +130,7 @@ public class DrawingComponent extends JComponent {
 
             @Override
             public void mouseMoved(MouseEvent e) {
-
+                DrawingComponent.this.reactToMove(e);
             }
         });
         addKeyListener(new KeyListener() {
@@ -234,8 +240,8 @@ public class DrawingComponent extends JComponent {
         if (newLinkOrigin != null) {
             var position1 = findVertexPosition(newLinkOrigin);
             Position position2 = findMousePosition();
-            var linePosition1 = computeArrowMeetingPositionWithVertex(position2, position1, newLinkOrigin);
-            drawLinkBetweenPositions(linePosition1, position2, newLinkType, g, false);
+            var linePosition1 = computeArrowMeetingPositionWithVertex(newLinkCenter != null ? newLinkCenter : position2, position1, newLinkOrigin);
+            drawLinkBetweenPositions(linePosition1, newLinkCenter, position2, newLinkType, g, false);
         }
 
         g.translate(-translationX, -translationY);
@@ -244,12 +250,13 @@ public class DrawingComponent extends JComponent {
     private void drawLink(Link link, Graphics g, boolean isSelected) {
         var position1 = findVertexPosition(link.getOrigin());
         var position2 = findVertexPosition(link.getDestination());
-        var linePosition1 = computeArrowMeetingPositionWithVertex(position2, position1, link.getOrigin());
-        var linePosition2 = computeArrowMeetingPositionWithVertex(position1, position2, link.getDestination());
-        drawLinkBetweenPositions(linePosition1, linePosition2, link.getClass(), g, isSelected);
+        var center = findLinkCenter(link);
+        var linePosition1 = computeArrowMeetingPositionWithVertex(center != null ? center : position2, position1, link.getOrigin());
+        var linePosition2 = computeArrowMeetingPositionWithVertex(center != null ? center : position1, position2, link.getDestination());
+        drawLinkBetweenPositions(linePosition1, center, linePosition2, link.getClass(), g, isSelected);
     }
 
-    private void drawLinkBetweenPositions(Position linePosition1, Position linePosition2, Class<? extends  Link> type, Graphics g, boolean isSelected) {
+    private void drawLinkBetweenPositions(Position position1, Position center, Position position2, Class<? extends  Link> type, Graphics g, boolean isSelected) {
         if (isSelected) {
             g.setColor(SELECTION_COLOR);
             ((Graphics2D) g).setStroke(SELECTED_LINK_STROKE);
@@ -258,12 +265,19 @@ public class DrawingComponent extends JComponent {
             g.setColor((type.equals(PossessionLink.class)) ? Color.BLACK : Color.GRAY);
             ((Graphics2D) g).setStroke((type.equals(PossessionLink.class)) ? POSSESSION_STROKE : COMPARISON_STROKE);
         }
-        g.drawLine(linePosition1.x(), linePosition1.y(), linePosition2.x(), linePosition2.y());
+        if (center != null) {
+            g.drawLine(position1.x(), position1.y(), center.x(), center.y());
+            g.drawLine(center.x(), center.y(), position2.x(), position2.y());
+        }
+        else {
+            g.drawLine(position1.x(), position1.y(), position2.x(), position2.y());
+        }
+        Position secondPosition = (center != null) ? center : position2;
         if (type.equals(PossessionLink.class)) {
-            drawPossessionArrow(linePosition1, linePosition2, g);
+            drawPossessionArrow(position1, secondPosition, g);
         }
         else if (type.equals(ComparisonLink.class)) {
-            drawComparisonCircle(linePosition1, linePosition2, g);
+            drawComparisonCircle(position1, secondPosition, g);
         }
     }
 
@@ -278,11 +292,19 @@ public class DrawingComponent extends JComponent {
         return switch (vertex) {
             case Object object -> findObjectPosition(object);
             case PossessionLink possessionLink -> {
+                var center = model.getPossessionLinkCenters().get(possessionLink);
+                if (center != null) {
+                    yield center;
+                }
                 var position1 = findVertexPosition(possessionLink.getOrigin());
                 var position2 = findVertexPosition(possessionLink.getDestination());
                 yield Position.middle(position1, position2);
             }
             case ComparisonLink comparisonLink -> {
+                var center = model.getComparisonLinkCenters().get(comparisonLink);
+                if (center != null) {
+                    yield center;
+                }
                 var position1 = findVertexPosition(comparisonLink.getOrigin());
                 var position2 = findVertexPosition(comparisonLink.getDestination());
                 yield Position.middle(position1, position2);
@@ -375,6 +397,31 @@ public class DrawingComponent extends JComponent {
     private void reactToClick(MouseEvent event) {
         Position position = findEventPosition(event);
         var selectedVertex = findVertexAtPosition(position);
+        // if drawing a link
+        if (this.newLinkOrigin != null) {
+            this.repaint();
+            if (selectedVertex == null) {
+                this.newLinkCenter = position;
+                return;
+            }
+            var origin = this.newLinkOrigin;
+            var center = this.newLinkCenter;
+            var linkType = this.newLinkType;
+            this.newLinkOrigin = null;
+            this.newLinkCenter = null;
+            this.newLinkType = null;
+            this.repaint();
+            if (selectedVertex == origin) {
+                return;
+            }
+            if (linkType.equals(PossessionLink.class) && ModelHandler.addPossessionLink(origin, center, selectedVertex, model)) {
+                changeDetector.notifyChange();
+            }
+            if (linkType.equals(ComparisonLink.class) && ModelHandler.addComparisonLink(origin, center, selectedVertex, model)) {
+                changeDetector.notifyChange();
+            }
+            return;
+        }
         // if press with command, add object or possession link
         if ((event.getModifiersEx() & Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()) != 0) {
             if (selectedVertex == null) {
@@ -396,8 +443,13 @@ public class DrawingComponent extends JComponent {
             newLinkType = ComparisonLink.class;
             return;
         }
-        this.lastSelectedVertex = selectedVertex;
         boolean isShiftKeyPressed = (event.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) != 0;
+        if (!isShiftKeyPressed && selectedVertex instanceof Link link && isPositionAtLinkCenter(position, link)) {
+            this.draggedCenterLink = link;
+            this.repaint();
+            return;
+        }
+        this.lastSelectedVertex = selectedVertex;
         if (selectedVertex == null && !isShiftKeyPressed) {
             this.selectionRectangleOrigin = position;
         }
@@ -471,27 +523,67 @@ public class DrawingComponent extends JComponent {
         return relativePosition.infiniteNormLength();
     }
 
-    private int findPositionDistanceFromLink(Position position, Link possessionLink) {
+    private int findPositionDistanceFromLink(Position position, Link link) {
 
-        var position1 = findVertexPosition(possessionLink.getOrigin());
-        var position2 = findVertexPosition(possessionLink.getDestination());
-        var positionVector = Vector.between(position1, position);
-        var linkVector = Vector.between(position1, position2);
+        var position1 = findVertexPosition(link.getOrigin());
+        var position2 = findVertexPosition(link.getDestination());
+        var center = findLinkCenter(link);
+
+        if (center == null) {
+            return findPositionDistanceFromLine(position, position1, position2);
+        }
+        int distance1 = findPositionDistanceFromLine(position, position1, center);
+        int distance2 = findPositionDistanceFromLine(position, center, position2);
+        return Math.min(distance1, distance2);
+    }
+
+    private int findPositionDistanceFromLine(Position position, Position lineOrigin, Position lineDestination) {
+
+        var positionVector = Vector.between(lineOrigin, position);
+        var linkVector = Vector.between(lineOrigin, lineDestination);
         float linkLength = Math.round(linkVector.length());
 
         float relativePositionAlongVector = Vector.scalarProduct(positionVector, linkVector) / linkLength / linkLength;
         if (relativePositionAlongVector < 0) {
-            return (int)Position.distance(position1, position);
+            return (int)Position.distance(lineOrigin, position);
         }
         else if (relativePositionAlongVector > 1) {
-            return (int)Position.distance(position2, position);
+            return (int)Position.distance(lineDestination, position);
         }
 
         float distanceFromLine = Math.abs(Vector.discriminant(positionVector, linkVector)) / linkLength;
         return (int)distanceFromLine;
     }
 
+    private boolean isPositionAtLinkCenter(Position position, Link link) {
+        Position center = findLinkCenter(link);
+        if (center == null) {
+            return false;
+        }
+        return Vector.between(position, center).length() <= LINK_CENTER_CLICK_RADIUS;
+    }
+
+    private Position findLinkCenter(Link link) {
+        return switch (link) {
+            case PossessionLink possessionLink -> model.getPossessionLinkCenters().get(possessionLink);
+            case ComparisonLink comparisonLink -> model.getComparisonLinkCenters().get(comparisonLink);
+        };
+    }
+
     private void reactToRelease(MouseEvent event) {
+        if (this.draggedCenterLink != null) {
+            Position position = findEventPosition(event);
+            if (this.draggedCenterLink instanceof PossessionLink possessionLink) {
+                this.model.getPossessionLinkCenters().put(possessionLink, position);
+            }
+            else if (this.draggedCenterLink instanceof ComparisonLink comparisonLink) {
+                this.model.getComparisonLinkCenters().put(comparisonLink, position);
+            }
+            this.draggedCenterLink = null;
+            this.changeDetector.notifyChange();
+            this.repaint();
+            return;
+        }
         if (selectionRectangleOrigin != null && selectionRectangleDestination != null) {
             this.repaint();
         }
@@ -501,24 +593,6 @@ public class DrawingComponent extends JComponent {
             this.repaint();
         }
         this.clearGuides();
-        if (this.newLinkOrigin != null) {
-            Position position = findEventPosition(event);
-            var destination = findVertexAtPosition(position);
-            var origin = this.newLinkOrigin;
-            this.newLinkOrigin = null;
-            if (destination != null && destination != origin) {
-                if (this.newLinkType.equals(PossessionLink.class) && ModelHandler.addPossessionLink(origin, destination, model)) {
-                    changeDetector.notifyChange();
-                }
-                if (this.newLinkType.equals(ComparisonLink.class) && ModelHandler.addComparisonLink(origin, destination, model)) {
-                    changeDetector.notifyChange();
-                }
-                this.repaint();
-            }
-            else {
-                this.repaint();
-            }
-        }
         if (!hasDragged && lastSelectedVertex != null && this.selectedVertices.size() > 1 && (event.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) == 0) {
             this.selectedVertices.removeIf(Predicate.not(Predicate.isEqual(lastSelectedVertex)));
             this.repaint();
@@ -530,12 +604,17 @@ public class DrawingComponent extends JComponent {
     }
 
     private void reactToDrag(MouseEvent event) {
-        // if a new linked is dragged, just repaint
-        if (newLinkOrigin != null) {
+        Position position = findEventPosition(event);
+        if (this.draggedCenterLink != null) {
+            if (this.draggedCenterLink instanceof PossessionLink possessionLink) {
+                this.model.getPossessionLinkCenters().put(possessionLink, position);
+            }
+            else if (this.draggedCenterLink instanceof ComparisonLink comparisonLink) {
+                this.model.getComparisonLinkCenters().put(comparisonLink, position);
+            }
             this.repaint();
             return;
         }
-        Position position = findEventPosition(event);
         if (selectionRectangleOrigin != null) {
             this.selectionRectangleDestination = position;
             List<Object> objectsInRectangle = model.getGraph().getObjects().stream()
@@ -645,6 +724,13 @@ public class DrawingComponent extends JComponent {
     private void clearGuides() {
         this.guidesX.clear();
         this.guidesY.clear();
+    }
+
+    private void reactToMove(MouseEvent event) {
+        // if a new linked is dragged, repaint
+        if (newLinkOrigin != null) {
+            this.repaint();
+        }
     }
 
     private void reactToKey(KeyEvent event) {
