@@ -4,6 +4,7 @@ import fr.alphonse.drawingpad.data.model.Object;
 import fr.alphonse.drawingpad.data.model.*;
 import fr.alphonse.drawingpad.data.model.reference.Reference;
 import fr.alphonse.drawingpad.data.model.reference.ReferenceType;
+import fr.alphonse.drawingpad.document.utils.GraphHandler;
 
 import javax.swing.*;
 import java.util.List;
@@ -114,8 +115,8 @@ public class LinkEndComponent extends JPanel {
 
     public void setDisplayedLink(Link displayedLink) {
         this.displayedLink = displayedLink;
-        this.originOwner = findOwner(displayedLink.getOrigin());
-        this.destinationOwner = findOwner(displayedLink.getDestination());
+        this.originOwner = GraphHandler.findUltimateOwner(displayedLink.getOrigin());
+        this.destinationOwner = GraphHandler.findUltimateOwner(displayedLink.getDestination());
 
         mustIgnoreCallbacks = true;
 
@@ -133,13 +134,6 @@ public class LinkEndComponent extends JPanel {
         destinationComboBox.setSelectedIndex(destinationReferenceTypeIndex);
 
         mustIgnoreCallbacks = false;
-    }
-
-    private Vertex findOwner(Vertex vertex) {
-        if (vertex instanceof Value value) {
-            return findOwner(value.getOwner());
-        }
-        return vertex;
     }
 
     private List<ReferenceType> findVertexReferenceTypes(Vertex vertex) {

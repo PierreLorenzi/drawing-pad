@@ -4,14 +4,11 @@ import fr.alphonse.drawingpad.data.Drawing;
 import fr.alphonse.drawingpad.data.geometry.Position;
 import fr.alphonse.drawingpad.data.model.Object;
 import fr.alphonse.drawingpad.data.model.*;
-import fr.alphonse.drawingpad.data.model.reference.Reference;
-import fr.alphonse.drawingpad.data.model.reference.ReferenceType;
 import fr.alphonse.drawingpad.data.model.value.GraduatedValue;
 import fr.alphonse.drawingpad.document.utils.GraphHandler;
 import lombok.experimental.UtilityClass;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 @UtilityClass
@@ -55,9 +52,6 @@ public class ModelHandler {
     }
 
     public boolean addPossessionLink(Vertex origin, Position center, Vertex destination, Drawing drawing) {
-        if (doesPossessionLinkExistWithObjects(origin, destination, drawing)) {
-            return false;
-        }
         PossessionLink possessionLink = makePossessionLink(origin, destination, drawing);
         drawing.getGraph().getPossessionLinks().add(possessionLink);
         if (center != null) {
@@ -66,25 +60,14 @@ public class ModelHandler {
         return true;
     }
 
-    private static boolean doesPossessionLinkExistWithObjects(Vertex origin, Vertex destination, Drawing drawing) {
-        // no link between the objects in either side
-        return doesPossessionLinkExistWithOriginAndDestination(origin, destination, drawing)
-                || doesPossessionLinkExistWithOriginAndDestination(destination, origin, drawing);
-    }
-
-    private static boolean doesPossessionLinkExistWithOriginAndDestination(Vertex origin, Vertex destination, Drawing drawing) {
-        return drawing.getGraph().getPossessionLinks().stream()
-                .anyMatch(link -> link.getOrigin() == origin && link.getDestination() == destination);
-    }
-
     private static PossessionLink makePossessionLink(Vertex origin, Vertex destination, Drawing drawing) {
         var link = new PossessionLink();
         var id = findAvailableVertexId(drawing.getGraph().getPossessionLinks());
         link.setId(id);
         link.setOrigin(origin);
-        link.setOriginReference(makeVertexReference(origin, drawing));
+        link.setOriginReference(GraphHandler.makeVertexReference(origin, drawing.getGraph()));
         link.setDestination(destination);
-        link.setDestinationReference(makeVertexReference(destination, drawing));
+        link.setDestinationReference(GraphHandler.makeVertexReference(destination, drawing.getGraph()));
         link.setFactor(new GraduatedValue<>());
         link.setCompleteness(LowerValue.builder()
                 .value(new GraduatedValue<>())
@@ -93,29 +76,7 @@ public class ModelHandler {
         return link;
     }
 
-    private static Reference makeVertexReference(Vertex vertex, Drawing drawing) {
-        int id = findVertexId(vertex);
-        // try all reference types until it works!
-        return Arrays.stream(ReferenceType.values())
-                .map(referenceType -> new Reference(referenceType, id)).
-                filter(reference -> GraphHandler.findReference(reference, drawing.getGraph()) == vertex)
-                .findFirst().orElseThrow();
-    }
-
-    private static int findVertexId(Vertex vertex) {
-        if (vertex instanceof WholeValue wholeValue) {
-            return findVertexId(wholeValue.getOwner());
-        }
-        if (vertex instanceof LowerValue lowerValue) {
-            return findVertexId(lowerValue.getOwner());
-        }
-        return vertex.getId();
-    }
-
     public boolean addComparisonLink(Vertex origin, Position center, Vertex destination, Drawing drawing) {
-        if (doesComparisonLinkExistWithObjects(origin, destination, drawing)) {
-            return false;
-        }
         ComparisonLink comparisonLink = makeComparisonLink(origin, destination, drawing);
         drawing.getGraph().getComparisonLinks().add(comparisonLink);
         if (center != null) {
@@ -124,25 +85,14 @@ public class ModelHandler {
         return true;
     }
 
-    private static boolean doesComparisonLinkExistWithObjects(Vertex origin, Vertex destination, Drawing drawing) {
-        // no link between the objects in either side
-        return doesComparisonLinkExistWithOriginAndDestination(origin, destination, drawing)
-                || doesComparisonLinkExistWithOriginAndDestination(destination, origin, drawing);
-    }
-
-    private static boolean doesComparisonLinkExistWithOriginAndDestination(Vertex origin, Vertex destination, Drawing drawing) {
-        return drawing.getGraph().getComparisonLinks().stream()
-                .anyMatch(link -> link.getOrigin() == origin && link.getDestination() == destination);
-    }
-
     private static ComparisonLink makeComparisonLink(Vertex origin, Vertex destination, Drawing drawing) {
         var link = new ComparisonLink();
         var id = findAvailableVertexId(drawing.getGraph().getComparisonLinks());
         link.setId(id);
         link.setOrigin(origin);
-        link.setOriginReference(makeVertexReference(origin, drawing));
+        link.setOriginReference(GraphHandler.makeVertexReference(origin, drawing.getGraph()));
         link.setDestination(destination);
-        link.setDestinationReference(makeVertexReference(destination, drawing));
+        link.setDestinationReference(GraphHandler.makeVertexReference(destination, drawing.getGraph()));
         link.setFactor(new GraduatedValue<>());
         link.setCompleteness(LowerValue.builder()
                 .value(new GraduatedValue<>())

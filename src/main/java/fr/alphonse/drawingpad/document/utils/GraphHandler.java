@@ -1,10 +1,13 @@
 package fr.alphonse.drawingpad.document.utils;
 
-import fr.alphonse.drawingpad.data.model.Graph;
-import fr.alphonse.drawingpad.data.model.Vertex;
+import fr.alphonse.drawingpad.data.Drawing;
+import fr.alphonse.drawingpad.data.model.*;
+import fr.alphonse.drawingpad.data.model.Object;
 import fr.alphonse.drawingpad.data.model.reference.Reference;
+import fr.alphonse.drawingpad.data.model.reference.ReferenceType;
 import lombok.experimental.UtilityClass;
 
+import java.util.Arrays;
 import java.util.List;
 
 @UtilityClass
@@ -28,5 +31,52 @@ public class GraphHandler {
         return vertices.stream()
                 .filter(vertex -> vertex.getId() == id)
                 .findFirst().orElseThrow();
+    }
+
+    public static Reference makeVertexReference(Vertex vertex, Graph graph) {
+        Vertex owner = findUltimateOwner(vertex);
+        ReferenceType referenceType = findReferenceTypeBetweenOwnerAndVertex(owner, vertex);
+        return new Reference(referenceType, owner.getId());
+    }
+
+    private ReferenceType findReferenceTypeBetweenOwnerAndVertex(Vertex owner, Vertex vertex) {
+        if (owner instanceof Object object) {
+            if (vertex == object) {
+                return ReferenceType.OBJECT;
+            }
+            else if (vertex == object.getCompleteness()) {
+                return ReferenceType.OBJECT_COMPLETENESS;
+            }
+            else if (vertex == object.getQuantity()) {
+                return ReferenceType.OBJECT_QUANTITY;
+            }
+            else if (vertex == object.getQuantity().getCompleteness()) {
+                return ReferenceType.OBJECT_QUANTITY_COMPLETENESS;
+            }
+        }
+        else if (owner instanceof PossessionLink possessionLink) {
+            if (vertex == possessionLink) {
+                return ReferenceType.POSSESSION_LINK;
+            }
+            else if (vertex == possessionLink.getCompleteness()) {
+                return ReferenceType.POSSESSION_LINK_COMPLETENESS;
+            }
+        }
+        else if (owner instanceof ComparisonLink comparisonLink) {
+            if (vertex == comparisonLink) {
+                return ReferenceType.COMPARISON_LINK;
+            }
+            else if (vertex == comparisonLink.getCompleteness()) {
+                return ReferenceType.COMPARISON_LINK_COMPLETENESS;
+            }
+        }
+        throw new Error("Unknown Reference Type!");
+    }
+
+    public Vertex findUltimateOwner(Vertex vertex) {
+        if (vertex instanceof Value value && value.getOwner() != null) {
+            return findUltimateOwner(value.getOwner());
+        }
+        return vertex;
     }
 }
