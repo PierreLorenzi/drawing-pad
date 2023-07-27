@@ -34,6 +34,8 @@ public class InfoComponent extends JPanel {
 
     private GraduatedValueComponent quantityValueComponent;
 
+    private GraduatedValueComponent quantityLocalValueComponent;
+
     private Link selectedLink = null;
 
     private JTextField linkNameField;
@@ -175,6 +177,15 @@ public class InfoComponent extends JPanel {
         quantityValueComponent = new GraduatedValueComponent();
         panel.add(quantityValueComponent);
 
+        // local value
+        panel.add(Box.createVerticalStrut(30));
+        JLabel localValueLabel = new JLabel("Local Value:");
+        localValueLabel.setForeground(Color.WHITE);
+        localValueLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        panel.add(localValueLabel);
+        quantityLocalValueComponent = new GraduatedValueComponent();
+        panel.add(quantityLocalValueComponent);
+
         return panel;
     }
 
@@ -266,6 +277,7 @@ public class InfoComponent extends JPanel {
         selectedQuantity = quantity;
         quantityNameField.setText(quantity.getName());
         quantityValueComponent.setValue(quantity.getValue());
+        quantityLocalValueComponent.setValue(quantity.getLocalValue());
     }
 
     private void updateLinkSelectionView(Link link) {

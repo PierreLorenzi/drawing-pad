@@ -17,6 +17,8 @@ public final class Quantity extends GraphElement implements Vertex {
 
     private Value value;
 
+    private Value localValue;
+
     @JsonIgnore
     @ToString.Exclude
     private Vertex base;

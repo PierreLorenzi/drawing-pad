@@ -66,6 +66,7 @@ public class ModelHandler {
         quantity.setBase(base);
         quantity.setBaseReference(makeReferenceForVertex(base));
         quantity.setValue(new Value());
+        quantity.setLocalValue(new Value());
         return quantity;
     }
 
