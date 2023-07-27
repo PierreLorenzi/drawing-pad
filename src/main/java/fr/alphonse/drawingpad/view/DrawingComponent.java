@@ -73,6 +73,10 @@ public class DrawingComponent extends JComponent {
 
     private static final BasicStroke LINK_STROKE = new BasicStroke(1);
 
+    private final static float[] BASE_LINE_DASH = new float[]{1.0f, 2.0f};
+
+    private static final BasicStroke BASE_LINE_STROKE = new BasicStroke(1.0f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10.0f, BASE_LINE_DASH, 0.0f);
+
     private static final int ARROW_KEY_DELTA = 1;
 
     private static final Vector ARROW_KEY_UP_DELTA = new Vector(0, -ARROW_KEY_DELTA);
@@ -238,6 +242,7 @@ public class DrawingComponent extends JComponent {
                 g.setColor(Color.BLUE);
             }
             g.fillOval(position.x()-CIRCLE_RADIUS, position.y()-CIRCLE_RADIUS, 2*CIRCLE_RADIUS, 2*CIRCLE_RADIUS);
+            drawBaseJoin(completion, completion.getBase(), g);
         }
 
         Map<Quantity, Position> quantityPositions = model.getQuantityPositions();
@@ -251,6 +256,7 @@ public class DrawingComponent extends JComponent {
                 g.setColor(Color.ORANGE);
             }
             g.fillOval(position.x()-CIRCLE_RADIUS, position.y()-CIRCLE_RADIUS, 2*CIRCLE_RADIUS, 2*CIRCLE_RADIUS);
+            drawBaseJoin(quantity, quantity.getBase(), g);
         }
 
         for (Link link : model.getGraph().getLinks()) {
@@ -267,6 +273,16 @@ public class DrawingComponent extends JComponent {
         }
 
         g.translate(-translationX, -translationY);
+    }
+
+    private void drawBaseJoin(Vertex vertex, Vertex base, Graphics g) {
+        var position1 = findVertexPosition(vertex);
+        var position2 = findVertexPosition(base);
+        var linePosition1 = computeArrowMeetingPositionWithVertex(position2, position1, vertex);
+        var linePosition2 = computeArrowMeetingPositionWithVertex(position1, position2, base);
+        ((Graphics2D)g).setStroke(BASE_LINE_STROKE);
+        g.setColor(Color.BLACK);
+        g.drawLine(linePosition1.x(), linePosition1.y(), linePosition2.x(), linePosition2.y());
     }
 
     private void drawLink(Link link, Graphics g, boolean isSelected) {
