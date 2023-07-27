@@ -1,11 +1,9 @@
 package fr.alphonse.drawingpad.view;
 
-import fr.alphonse.drawingpad.data.model.GraphElement;
-import fr.alphonse.drawingpad.data.model.Link;
+import fr.alphonse.drawingpad.data.model.*;
 import fr.alphonse.drawingpad.data.model.Object;
 import fr.alphonse.drawingpad.document.utils.ChangeDetector;
 import fr.alphonse.drawingpad.view.internal.GraduatedValueComponent;
-import fr.alphonse.drawingpad.view.internal.LinkEndComponent;
 
 import javax.swing.*;
 import java.awt.*;
@@ -22,21 +20,23 @@ public class InfoComponent extends JPanel {
 
     private JTextField objectNameField;
 
-    private GraduatedValueComponent objectCompletionComponent;
+    private Completion selectedCompletion = null;
 
-    private GraduatedValueComponent objectLocalCompletionComponent;
+    private JTextField completionNameField;
 
-    private GraduatedValueComponent objectQuantityComponent;
+    private GraduatedValueComponent completionValueComponent;
 
-    private GraduatedValueComponent objectQuantityCompletionComponent;
+    private GraduatedValueComponent completionLocalValueComponent;
+
+    private Quantity selectedQuantity = null;
+
+    private JTextField quantityNameField;
+
+    private GraduatedValueComponent quantityValueComponent;
 
     private Link selectedLink = null;
 
-    private LinkEndComponent linkEndComponent;
-
     private JTextField linkNameField;
-
-    private GraduatedValueComponent linkCompletionComponent;
 
     private GraduatedValueComponent linkFactorComponent;
 
@@ -45,6 +45,10 @@ public class InfoComponent extends JPanel {
     private static final String MULTIPLE_SELECTION_CARD = "multiple";
 
     private static final String OBJECT_SELECTION_CARD = "object";
+
+    private static final String COMPLETION_SELECTION_CARD = "completion";
+
+    private static final String QUANTITY_SELECTION_CARD = "quantity";
 
     private static final String LINK_SELECTION_CARD = "link";
 
@@ -59,6 +63,8 @@ public class InfoComponent extends JPanel {
         add(makeEmptySelectionView(), EMPTY_SELECTION_CARD);
         add(makeMultipleSelectionView(), MULTIPLE_SELECTION_CARD);
         add(makeObjectSelectionView(), OBJECT_SELECTION_CARD);
+        add(makeCompletionSelectionView(), COMPLETION_SELECTION_CARD);
+        add(makeQuantitySelectionView(), QUANTITY_SELECTION_CARD);
         add(makeLinkSelectionView(), LINK_SELECTION_CARD);
         switchToCard(EMPTY_SELECTION_CARD);
 
@@ -88,43 +94,12 @@ public class InfoComponent extends JPanel {
 
     private JPanel makeObjectSelectionView() {
         JPanel panel = makeInfoPanel();
-        ElementFieldSet elementFieldSet = makeElementFields(panel);
-        elementFieldSet.name().addActionListener(event -> {if (this.selectedObject != null) {
-            this.selectedObject.setName(elementFieldSet.name().getText());
+        JTextField nameField = makeNameField(panel);
+        nameField.addActionListener(event -> {if (this.selectedObject != null) {
+            this.selectedObject.setName(nameField.getText());
             this.modelChangeDetector.notifyChange();
         }});
-        this.objectNameField = elementFieldSet.name();
-        this.objectCompletionComponent = elementFieldSet.completion();
-
-        // local completion
-        panel.add(Box.createVerticalStrut(30));
-        JLabel localCompletionLabel = new JLabel("Local Completion:");
-        localCompletionLabel.setForeground(Color.WHITE);
-        localCompletionLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        panel.add(localCompletionLabel);
-        GraduatedValueComponent localCompletionComponent = new GraduatedValueComponent();
-        panel.add(localCompletionComponent);
-        this.objectLocalCompletionComponent = localCompletionComponent;
-
-        // quantity
-        panel.add(Box.createVerticalStrut(30));
-        JLabel quantityLabel = new JLabel("Quantity:");
-        quantityLabel.setForeground(Color.WHITE);
-        quantityLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        panel.add(quantityLabel);
-        GraduatedValueComponent quantityComponent = new GraduatedValueComponent();
-        panel.add(quantityComponent);
-        this.objectQuantityComponent = quantityComponent;
-
-        // quantity completion
-        panel.add(Box.createVerticalStrut(30));
-        JLabel quantityCompletionLabel = new JLabel("Quantity Completion:");
-        quantityCompletionLabel.setForeground(Color.WHITE);
-        quantityCompletionLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        panel.add(quantityCompletionLabel);
-        GraduatedValueComponent quantityCompletionComponent = new GraduatedValueComponent();
-        panel.add(quantityCompletionComponent);
-        this.objectQuantityCompletionComponent = quantityCompletionComponent;
+        this.objectNameField = nameField;
 
         return panel;
     }
@@ -137,9 +112,7 @@ public class InfoComponent extends JPanel {
         return panel;
     }
 
-    private record ElementFieldSet(JTextField name, GraduatedValueComponent completion) {}
-
-    private ElementFieldSet makeElementFields(JPanel panel) {
+    private JTextField makeNameField(JPanel panel) {
 
         // name
         JLabel nameLabel = new JLabel("Name:");
@@ -151,34 +124,69 @@ public class InfoComponent extends JPanel {
         panel.add(textField);
         panel.add(Box.createVerticalGlue());
 
-        // completion
-        panel.add(Box.createVerticalStrut(30));
-        JLabel completionLabel = new JLabel("Completion:");
-        completionLabel.setForeground(Color.WHITE);
-        completionLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        panel.add(completionLabel);
-        GraduatedValueComponent completionComponent = new GraduatedValueComponent();
-        panel.add(completionComponent);
+        return textField;
+    }
 
-        return new ElementFieldSet(textField, completionComponent);
+    private JPanel makeCompletionSelectionView() {
+        JPanel panel = makeInfoPanel();
+        JTextField nameField = makeNameField(panel);
+        nameField.addActionListener(event -> {if (this.selectedCompletion != null) {
+            this.selectedCompletion.setName(nameField.getText());
+            this.modelChangeDetector.notifyChange();
+        }});
+        this.completionNameField = nameField;
+
+        // value
+        panel.add(Box.createVerticalStrut(30));
+        JLabel valueLabel = new JLabel("Value:");
+        valueLabel.setForeground(Color.WHITE);
+        valueLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        panel.add(valueLabel);
+        completionValueComponent = new GraduatedValueComponent();
+        panel.add(completionValueComponent);
+
+        // local value
+        panel.add(Box.createVerticalStrut(30));
+        JLabel localValueLabel = new JLabel("Local Value:");
+        localValueLabel.setForeground(Color.WHITE);
+        localValueLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        panel.add(localValueLabel);
+        completionLocalValueComponent = new GraduatedValueComponent();
+        panel.add(completionLocalValueComponent);
+
+        return panel;
+    }
+
+    private JPanel makeQuantitySelectionView() {
+        JPanel panel = makeInfoPanel();
+        JTextField nameField = makeNameField(panel);
+        nameField.addActionListener(event -> {if (this.selectedQuantity != null) {
+            this.selectedQuantity.setName(nameField.getText());
+            this.modelChangeDetector.notifyChange();
+        }});
+        this.quantityNameField = nameField;
+
+        // value
+        panel.add(Box.createVerticalStrut(30));
+        JLabel valueLabel = new JLabel("Value:");
+        valueLabel.setForeground(Color.WHITE);
+        valueLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        panel.add(valueLabel);
+        quantityValueComponent = new GraduatedValueComponent();
+        panel.add(quantityValueComponent);
+
+        return panel;
     }
 
     private JPanel makeLinkSelectionView() {
         JPanel panel = makeInfoPanel();
 
-        // link end
-        linkEndComponent = new LinkEndComponent();
-        linkEndComponent.setChangeListener(this.modelChangeDetector::notifyChange);
-        panel.add(linkEndComponent);
-
-        // name completion
-        ElementFieldSet elementFieldSet = makeElementFields(panel);
-        elementFieldSet.name().addActionListener(event -> {if (this.selectedLink != null) {
-            this.selectedLink.setName(elementFieldSet.name().getText());
+        JTextField nameField = makeNameField(panel);
+        nameField.addActionListener(event -> {if (this.selectedLink != null) {
+            this.selectedLink.setName(nameField.getText());
             this.modelChangeDetector.notifyChange();
         }});
-        this.linkNameField = elementFieldSet.name();
-        this.linkCompletionComponent = elementFieldSet.completion();
+        this.linkNameField = nameField;
 
         // factor
         panel.add(Box.createVerticalStrut(30));
@@ -207,6 +215,14 @@ public class InfoComponent extends JPanel {
                         switchToCard(OBJECT_SELECTION_CARD);
                         updateObjectSelectionView(object);
                     }
+                    case Completion completion -> {
+                        switchToCard(COMPLETION_SELECTION_CARD);
+                        updateCompletionSelectionView(completion);
+                    }
+                    case Quantity quantity -> {
+                        switchToCard(QUANTITY_SELECTION_CARD);
+                        updateQuantitySelectionView(quantity);
+                    }
                     case Link link -> {
                         switchToCard(LINK_SELECTION_CARD);
                         updateLinkSelectionView(link);
@@ -227,25 +243,34 @@ public class InfoComponent extends JPanel {
 
     private void updateMultipleSelectionView() {
         long objectCount = selection.stream().filter(id -> id instanceof Object).count();
+        long completionCount = selection.stream().filter(id -> id instanceof Completion).count();
+        long quantityCount = selection.stream().filter(id -> id instanceof Quantity).count();
         long linkCount = selection.stream().filter(id -> id instanceof Link).count();
-        long total = objectCount + linkCount;
-        multipleSelectionLabel.setText(total + " elements in selection: " + objectCount + " objects, " + linkCount + " links");
+        long total = objectCount + completionCount + quantityCount + linkCount;
+        multipleSelectionLabel.setText(total + " elements in selection: " + objectCount + " objects, " + completionCount + " completions, " + quantityCount + " quantities, " + linkCount + " links");
     }
 
     private void updateObjectSelectionView(Object object) {
         selectedObject = object;
         objectNameField.setText(object.getName());
-        objectCompletionComponent.setValue(object.getCompletion());
-        objectLocalCompletionComponent.setValue(object.getLocalCompletion());
-        objectQuantityComponent.setValue(object.getQuantity());
-        objectQuantityCompletionComponent.setValue(object.getQuantityCompletion());
+    }
+
+    private void updateCompletionSelectionView(Completion completion) {
+        selectedCompletion = completion;
+        completionNameField.setText(completion.getName());
+        completionValueComponent.setValue(completion.getValue());
+        completionLocalValueComponent.setValue(completion.getLocalValue());
+    }
+
+    private void updateQuantitySelectionView(Quantity quantity) {
+        selectedQuantity = quantity;
+        quantityNameField.setText(quantity.getName());
+        quantityValueComponent.setValue(quantity.getValue());
     }
 
     private void updateLinkSelectionView(Link link) {
         selectedLink = link;
-        linkEndComponent.setDisplayedLink(link);
         linkNameField.setText(link.getName());
-        linkCompletionComponent.setValue(link.getCompletion());
         linkFactorComponent.setValue(link.getFactor());
     }
 }

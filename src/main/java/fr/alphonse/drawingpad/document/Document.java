@@ -5,9 +5,8 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import fr.alphonse.drawingpad.data.Drawing;
 import fr.alphonse.drawingpad.data.DrawingJson;
 import fr.alphonse.drawingpad.data.geometry.Position;
-import fr.alphonse.drawingpad.data.model.Graph;
+import fr.alphonse.drawingpad.data.model.*;
 import fr.alphonse.drawingpad.data.model.Object;
-import fr.alphonse.drawingpad.data.model.Link;
 import fr.alphonse.drawingpad.document.utils.ChangeDetector;
 import fr.alphonse.drawingpad.document.utils.DocumentUtils;
 import fr.alphonse.drawingpad.document.utils.GraphHandler;
@@ -51,9 +50,13 @@ public class Document {
         this.model = Drawing.builder()
                 .graph(Graph.builder()
                         .objects(new ArrayList<>())
+                        .completions(new ArrayList<>())
+                        .quantities(new ArrayList<>())
                         .links(new ArrayList<>())
                         .build())
                 .positions(new HashMap<>())
+                .completionPositions(new HashMap<>())
+                .quantityPositions(new HashMap<>())
                 .linkCenters(new HashMap<>())
                 .build();
         this.changeDetector = new ChangeDetector(model);
@@ -78,41 +81,55 @@ public class Document {
         Graph graph = json.getGraph();
 
         // resolve references
-        fillLinkEnds(graph);
+        fillLinkOutlets(graph);
+        fillVertices(graph);
 
         // copy lists
         List<Object> objects = new ArrayList<>(graph.getObjects());
         List<Link> links = new ArrayList<>(graph.getLinks());
-        Map<Object, Position> positions = json.getPositions().keySet().stream().collect(Collectors.toMap(id -> findObjectWithId(graph, id), json.getPositions()::get));
-        Map<Link, Position> linkCenters = json.getLinkCenters().keySet().stream().collect(Collectors.toMap(id -> findLinkWithId(graph, id), json.getLinkCenters()::get));
+        List<Completion> completions = new ArrayList<>(graph.getCompletions());
+        List<Quantity> quantities = new ArrayList<>(graph.getQuantities());
+        Map<Object, Position> positions = json.getPositions().keySet().stream().collect(Collectors.toMap(id -> GraphHandler.findGraphElementWithId(graph.getObjects(), id), json.getPositions()::get));
+        Map<Completion, Position> completionPositions = json.getCompletionPositions().keySet().stream().collect(Collectors.toMap(id -> GraphHandler.findGraphElementWithId(graph.getCompletions(), id), json.getCompletionPositions()::get));
+        Map<Quantity, Position> quantityPositions = json.getQuantityPositions().keySet().stream().collect(Collectors.toMap(id -> GraphHandler.findGraphElementWithId(graph.getQuantities(), id), json.getQuantityPositions()::get));
+        Map<Link, Position> linkCenters = json.getLinkCenters().keySet().stream().collect(Collectors.toMap(id -> GraphHandler.findGraphElementWithId(graph.getLinks(), id), json.getLinkCenters()::get));
 
         return Drawing.builder()
                 .graph(Graph.builder()
                         .objects(objects)
                         .links(links)
+                        .completions(completions)
+                        .quantities(quantities)
                         .build())
                 .positions(positions)
+                .completionPositions(completionPositions)
+                .quantityPositions(quantityPositions)
                 .linkCenters(linkCenters)
                 .build();
     }
 
-    private static void fillLinkEnds(Graph graph) {
+    private static void fillLinkOutlets(Graph graph) {
         for (Link link : graph.getLinks()) {
-            link.setOriginElement(GraphHandler.findGraphElementAtReference(link.getOriginReference(), graph));
-            link.setDestinationElement(GraphHandler.findGraphElementAtReference(link.getDestinationReference(), graph));
+            link.setDirectFactor(DirectFactor.builder()
+                    .link(link)
+                    .build());
+            link.setReverseFactor(ReverseFactor.builder()
+                    .link(link)
+                    .build());
         }
     }
 
-    private static Object findObjectWithId(Graph graph, int id) {
-        return graph.getObjects().stream()
-                .filter(object -> object.getId() == id)
-                .findFirst().orElseThrow();
-    }
-
-    private static Link findLinkWithId(Graph graph, int id) {
-        return graph.getLinks().stream()
-                .filter(link -> link.getId() == id)
-                .findFirst().orElseThrow();
+    private static void fillVertices(Graph graph) {
+        for (Link link : graph.getLinks()) {
+            link.setOrigin(GraphHandler.findVertexAtReference(link.getOriginReference(), graph));
+            link.setDestination(GraphHandler.findVertexAtReference(link.getDestinationReference(), graph));
+        }
+        for (Completion completion: graph.getCompletions()) {
+            completion.setBase(GraphHandler.findVertexAtReference(completion.getBaseReference(), graph));
+        }
+        for (Quantity quantity: graph.getQuantities()) {
+            quantity.setBase(GraphHandler.findVertexAtReference(quantity.getBaseReference(), graph));
+        }
     }
 
     private void listenToChanges() {
@@ -315,6 +332,10 @@ public class Document {
                 .graph(model.getGraph())
                 .positions(model.getPositions().keySet().stream()
                         .collect(Collectors.toMap(Object::getId,model.getPositions()::get)))
+                .completionPositions(model.getCompletionPositions().keySet().stream()
+                        .collect(Collectors.toMap(Completion::getId,model.getCompletionPositions()::get)))
+                .quantityPositions(model.getQuantityPositions().keySet().stream()
+                        .collect(Collectors.toMap(Quantity::getId,model.getQuantityPositions()::get)))
                 .linkCenters(model.getLinkCenters().keySet().stream()
                         .collect(Collectors.toMap(Link::getId,model.getLinkCenters()::get)))
                 .build();

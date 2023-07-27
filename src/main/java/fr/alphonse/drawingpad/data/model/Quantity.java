@@ -11,27 +11,13 @@ import lombok.experimental.SuperBuilder;
 @AllArgsConstructor
 @SuperBuilder
 @EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
-public final class Link extends GraphElement {
+public final class Quantity extends GraphElement implements Vertex {
 
-    private Reference originReference;
+    private Reference baseReference;
 
-    private Reference destinationReference;
-
-    private Value factor;
+    private Value value;
 
     @JsonIgnore
     @ToString.Exclude
-    private DirectFactor directFactor;
-
-    @JsonIgnore
-    @ToString.Exclude
-    private ReverseFactor reverseFactor;
-
-    @JsonIgnore
-    @ToString.Exclude
-    private Vertex origin;
-
-    @JsonIgnore
-    @ToString.Exclude
-    private Vertex destination;
+    private Vertex base;
 }

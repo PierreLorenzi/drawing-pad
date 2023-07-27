@@ -9,5 +9,5 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @SuperBuilder
 @EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
-public final class Object extends GraphElement implements Vertex {
+public final class ReverseFactor extends LinkFactor implements Vertex {
 }

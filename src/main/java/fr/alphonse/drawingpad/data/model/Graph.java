@@ -15,5 +15,9 @@ public class Graph {
 
     private List<Object> objects;
 
+    private List<Completion> completions;
+
+    private List<Quantity> quantities;
+
     private List<Link> links;
 }
