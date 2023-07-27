@@ -1,5 +1,6 @@
 package fr.alphonse.drawingpad.data.model;
 
+import fr.alphonse.drawingpad.data.model.value.Value;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -9,14 +10,14 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
-public sealed abstract class Vertex permits Object, PossessionLink, ComparisonLink, WholeValue, LowerValue {
+public abstract sealed class GraphElement permits Object, Link {
 
     public Integer id;
 
     private String name;
 
-    // inside there is no completeness and no quantity
-    private LowerValue completeness;
+    // <= 1
+    private Value completion;
 
     @Override
     public boolean equals(java.lang.Object o) {

@@ -1,22 +1,29 @@
 package fr.alphonse.drawingpad.data.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import fr.alphonse.drawingpad.data.model.reference.Reference;
+import fr.alphonse.drawingpad.data.model.value.Value;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
 
-public sealed interface Link permits PossessionLink, ComparisonLink {
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@SuperBuilder
+@EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
+public final class Link extends GraphElement {
 
-    Reference getOriginReference();
+    private Reference originReference;
 
-    void setOriginReference(Reference reference);
+    private Reference destinationReference;
 
-    Reference getDestinationReference();
+    private Value factor;
 
-    void setDestinationReference(Reference reference);
+    @JsonIgnore
+    @ToString.Exclude
+    public GraphElement originElement;
 
-    Vertex getOrigin();
-
-    void setOrigin(Vertex vertex);
-
-    Vertex getDestination();
-
-    void setDestination(Vertex vertex);
+    @JsonIgnore
+    @ToString.Exclude
+    public GraphElement destinationElement;
 }

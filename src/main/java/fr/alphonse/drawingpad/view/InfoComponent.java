@@ -1,9 +1,8 @@
 package fr.alphonse.drawingpad.view;
 
+import fr.alphonse.drawingpad.data.model.GraphElement;
+import fr.alphonse.drawingpad.data.model.Link;
 import fr.alphonse.drawingpad.data.model.Object;
-import fr.alphonse.drawingpad.data.model.*;
-import fr.alphonse.drawingpad.data.model.value.LowerGraduation;
-import fr.alphonse.drawingpad.data.model.value.WholeGraduation;
 import fr.alphonse.drawingpad.document.utils.ChangeDetector;
 import fr.alphonse.drawingpad.view.internal.GraduatedValueComponent;
 import fr.alphonse.drawingpad.view.internal.LinkEndComponent;
@@ -13,7 +12,7 @@ import java.awt.*;
 
 public class InfoComponent extends JPanel {
 
-    private final java.util.List<Vertex> selection;
+    private final java.util.List<GraphElement> selection;
 
     private final ChangeDetector modelChangeDetector;
 
@@ -23,31 +22,23 @@ public class InfoComponent extends JPanel {
 
     private JTextField objectNameField;
 
-    private GraduatedValueComponent<LowerGraduation> objectCompletenessComponent;
+    private GraduatedValueComponent objectCompletionComponent;
 
-    private GraduatedValueComponent<LowerGraduation> objectLocalCompletenessComponent;
+    private GraduatedValueComponent objectLocalCompletionComponent;
 
-    private GraduatedValueComponent<WholeGraduation> objectQuantityComponent;
+    private GraduatedValueComponent objectQuantityComponent;
 
-    private PossessionLink selectedPossessionLink = null;
+    private GraduatedValueComponent objectQuantityCompletionComponent;
 
-    private LinkEndComponent possessionLinkEndComponent;
+    private Link selectedLink = null;
 
-    private JTextField possessionLinkNameField;
+    private LinkEndComponent linkEndComponent;
 
-    private GraduatedValueComponent<LowerGraduation> possessionLinkCompletenessComponent;
+    private JTextField linkNameField;
 
-    private GraduatedValueComponent<LowerGraduation> possessionLinkFactorComponent;
+    private GraduatedValueComponent linkCompletionComponent;
 
-    private ComparisonLink selectedComparisonLink = null;
-
-    private LinkEndComponent comparisonLinkEndComponent;
-
-    private JTextField comparisonLinkNameField;
-
-    private GraduatedValueComponent<LowerGraduation> comparisonLinkCompletenessComponent;
-
-    private GraduatedValueComponent<WholeGraduation> comparisonLinkFactorComponent;
+    private GraduatedValueComponent linkFactorComponent;
 
     private static final String EMPTY_SELECTION_CARD = "empty";
 
@@ -55,11 +46,9 @@ public class InfoComponent extends JPanel {
 
     private static final String OBJECT_SELECTION_CARD = "object";
 
-    private static final String POSSESSION_LINK_SELECTION_CARD = "possessionLink";
+    private static final String LINK_SELECTION_CARD = "link";
 
-    private static final String COMPARISON_LINK_SELECTION_CARD = "comparisonLink";
-
-    public InfoComponent(java.util.List<Vertex> selection, ChangeDetector changeDetector, ChangeDetector modelChangeDetector) {
+    public InfoComponent(java.util.List<GraphElement> selection, ChangeDetector changeDetector, ChangeDetector modelChangeDetector) {
         super();
         this.selection = selection;
         this.modelChangeDetector = modelChangeDetector;
@@ -70,8 +59,7 @@ public class InfoComponent extends JPanel {
         add(makeEmptySelectionView(), EMPTY_SELECTION_CARD);
         add(makeMultipleSelectionView(), MULTIPLE_SELECTION_CARD);
         add(makeObjectSelectionView(), OBJECT_SELECTION_CARD);
-        add(makePossessionLinkSelectionView(), POSSESSION_LINK_SELECTION_CARD);
-        add(makeComparisonLinkSelectionView(), COMPARISON_LINK_SELECTION_CARD);
+        add(makeLinkSelectionView(), LINK_SELECTION_CARD);
         switchToCard(EMPTY_SELECTION_CARD);
 
         setBackground(Color.DARK_GRAY);
@@ -100,23 +88,23 @@ public class InfoComponent extends JPanel {
 
     private JPanel makeObjectSelectionView() {
         JPanel panel = makeInfoPanel();
-        VertexFieldSet vertexFieldSet = makeVertexFields(panel);
-        vertexFieldSet.name().addActionListener(event -> {if (this.selectedObject != null) {
-            this.selectedObject.setName(vertexFieldSet.name().getText());
+        ElementFieldSet elementFieldSet = makeElementFields(panel);
+        elementFieldSet.name().addActionListener(event -> {if (this.selectedObject != null) {
+            this.selectedObject.setName(elementFieldSet.name().getText());
             this.modelChangeDetector.notifyChange();
         }});
-        this.objectNameField = vertexFieldSet.name();
-        this.objectCompletenessComponent = vertexFieldSet.completeness();
+        this.objectNameField = elementFieldSet.name();
+        this.objectCompletionComponent = elementFieldSet.completion();
 
-        // local completeness
+        // local completion
         panel.add(Box.createVerticalStrut(30));
-        JLabel localCompletenessLabel = new JLabel("Local Completeness:");
-        localCompletenessLabel.setForeground(Color.WHITE);
-        localCompletenessLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        panel.add(localCompletenessLabel);
-        GraduatedValueComponent<LowerGraduation> localCompletenessComponent = new GraduatedValueComponent<>(LowerGraduation.class);
-        panel.add(localCompletenessComponent);
-        this.objectLocalCompletenessComponent = localCompletenessComponent;
+        JLabel localCompletionLabel = new JLabel("Local Completion:");
+        localCompletionLabel.setForeground(Color.WHITE);
+        localCompletionLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        panel.add(localCompletionLabel);
+        GraduatedValueComponent localCompletionComponent = new GraduatedValueComponent();
+        panel.add(localCompletionComponent);
+        this.objectLocalCompletionComponent = localCompletionComponent;
 
         // quantity
         panel.add(Box.createVerticalStrut(30));
@@ -124,9 +112,19 @@ public class InfoComponent extends JPanel {
         quantityLabel.setForeground(Color.WHITE);
         quantityLabel.setHorizontalAlignment(SwingConstants.CENTER);
         panel.add(quantityLabel);
-        GraduatedValueComponent<WholeGraduation> quantityComponent = new GraduatedValueComponent<>(WholeGraduation.class);
+        GraduatedValueComponent quantityComponent = new GraduatedValueComponent();
         panel.add(quantityComponent);
         this.objectQuantityComponent = quantityComponent;
+
+        // quantity completion
+        panel.add(Box.createVerticalStrut(30));
+        JLabel quantityCompletionLabel = new JLabel("Quantity Completion:");
+        quantityCompletionLabel.setForeground(Color.WHITE);
+        quantityCompletionLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        panel.add(quantityCompletionLabel);
+        GraduatedValueComponent quantityCompletionComponent = new GraduatedValueComponent();
+        panel.add(quantityCompletionComponent);
+        this.objectQuantityCompletionComponent = quantityCompletionComponent;
 
         return panel;
     }
@@ -139,9 +137,9 @@ public class InfoComponent extends JPanel {
         return panel;
     }
 
-    private record VertexFieldSet(JTextField name, GraduatedValueComponent<LowerGraduation> completeness) {}
+    private record ElementFieldSet(JTextField name, GraduatedValueComponent completion) {}
 
-    private VertexFieldSet makeVertexFields(JPanel panel) {
+    private ElementFieldSet makeElementFields(JPanel panel) {
 
         // name
         JLabel nameLabel = new JLabel("Name:");
@@ -153,34 +151,34 @@ public class InfoComponent extends JPanel {
         panel.add(textField);
         panel.add(Box.createVerticalGlue());
 
-        // completeness
+        // completion
         panel.add(Box.createVerticalStrut(30));
-        JLabel completenessLabel = new JLabel("Completeness:");
-        completenessLabel.setForeground(Color.WHITE);
-        completenessLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        panel.add(completenessLabel);
-        GraduatedValueComponent<LowerGraduation> completenessComponent = new GraduatedValueComponent<>(LowerGraduation.class);
-        panel.add(completenessComponent);
+        JLabel completionLabel = new JLabel("Completion:");
+        completionLabel.setForeground(Color.WHITE);
+        completionLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        panel.add(completionLabel);
+        GraduatedValueComponent completionComponent = new GraduatedValueComponent();
+        panel.add(completionComponent);
 
-        return new VertexFieldSet(textField, completenessComponent);
+        return new ElementFieldSet(textField, completionComponent);
     }
 
-    private JPanel makePossessionLinkSelectionView() {
+    private JPanel makeLinkSelectionView() {
         JPanel panel = makeInfoPanel();
 
         // link end
-        possessionLinkEndComponent = new LinkEndComponent();
-        possessionLinkEndComponent.setChangeListener(this.modelChangeDetector::notifyChange);
-        panel.add(possessionLinkEndComponent);
+        linkEndComponent = new LinkEndComponent();
+        linkEndComponent.setChangeListener(this.modelChangeDetector::notifyChange);
+        panel.add(linkEndComponent);
 
-        // name completeness
-        VertexFieldSet vertexFieldSet = makeVertexFields(panel);
-        vertexFieldSet.name().addActionListener(event -> {if (this.selectedPossessionLink != null) {
-            this.selectedPossessionLink.setName(vertexFieldSet.name().getText());
+        // name completion
+        ElementFieldSet elementFieldSet = makeElementFields(panel);
+        elementFieldSet.name().addActionListener(event -> {if (this.selectedLink != null) {
+            this.selectedLink.setName(elementFieldSet.name().getText());
             this.modelChangeDetector.notifyChange();
         }});
-        this.possessionLinkNameField = vertexFieldSet.name();
-        this.possessionLinkCompletenessComponent = vertexFieldSet.completeness();
+        this.linkNameField = elementFieldSet.name();
+        this.linkCompletionComponent = elementFieldSet.completion();
 
         // factor
         panel.add(Box.createVerticalStrut(30));
@@ -188,39 +186,8 @@ public class InfoComponent extends JPanel {
         factorLabel.setForeground(Color.WHITE);
         factorLabel.setHorizontalAlignment(SwingConstants.CENTER);
         panel.add(factorLabel);
-        possessionLinkFactorComponent = new GraduatedValueComponent<>(LowerGraduation.class);
-        panel.add(possessionLinkFactorComponent);
-
-        panel.add(Box.createVerticalGlue());
-
-        return panel;
-    }
-
-    private JPanel makeComparisonLinkSelectionView() {
-        JPanel panel = makeInfoPanel();
-
-        // link end
-        comparisonLinkEndComponent = new LinkEndComponent();
-        comparisonLinkEndComponent.setChangeListener(this.modelChangeDetector::notifyChange);
-        panel.add(comparisonLinkEndComponent);
-
-        // name completeness
-        VertexFieldSet vertexFieldSet = makeVertexFields(panel);
-        vertexFieldSet.name().addActionListener(event -> {if (this.selectedComparisonLink != null) {
-            this.selectedComparisonLink.setName(vertexFieldSet.name().getText());
-            this.modelChangeDetector.notifyChange();
-        }});
-        this.comparisonLinkNameField = vertexFieldSet.name();
-        this.comparisonLinkCompletenessComponent = vertexFieldSet.completeness();
-
-        // factor
-        panel.add(Box.createVerticalStrut(30));
-        JLabel factorLabel = new JLabel("Factor:");
-        factorLabel.setForeground(Color.WHITE);
-        factorLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        panel.add(factorLabel);
-        comparisonLinkFactorComponent = new GraduatedValueComponent<>(WholeGraduation.class);
-        panel.add(comparisonLinkFactorComponent);
+        linkFactorComponent = new GraduatedValueComponent();
+        panel.add(linkFactorComponent);
 
         panel.add(Box.createVerticalGlue());
 
@@ -240,16 +207,10 @@ public class InfoComponent extends JPanel {
                         switchToCard(OBJECT_SELECTION_CARD);
                         updateObjectSelectionView(object);
                     }
-                    case PossessionLink possessionLink -> {
-                        switchToCard(POSSESSION_LINK_SELECTION_CARD);
-                        updatePossessionLinkSelectionView(possessionLink);
+                    case Link link -> {
+                        switchToCard(LINK_SELECTION_CARD);
+                        updateLinkSelectionView(link);
                     }
-                    case ComparisonLink comparisonLink -> {
-                        switchToCard(COMPARISON_LINK_SELECTION_CARD);
-                        updateComparisonLinkSelectionView(comparisonLink);
-                    }
-                    case WholeValue ignored -> throw new Error("Whole values not handled as real vertices");
-                    case LowerValue ignored -> throw new Error("Lower values not handled as real vertices");
                 }
             }
             default -> {
@@ -266,33 +227,25 @@ public class InfoComponent extends JPanel {
 
     private void updateMultipleSelectionView() {
         long objectCount = selection.stream().filter(id -> id instanceof Object).count();
-        long possessionLinkCount = selection.stream().filter(id -> id instanceof PossessionLink).count();
-        long comparisonLinkCount = selection.stream().filter(id -> id instanceof ComparisonLink).count();
-        long total = objectCount + possessionLinkCount + comparisonLinkCount;
-        multipleSelectionLabel.setText(total + " elements in selection: " + objectCount + " objects, " + possessionLinkCount + " possessions, " + comparisonLinkCount + " comparisons");
+        long linkCount = selection.stream().filter(id -> id instanceof Link).count();
+        long total = objectCount + linkCount;
+        multipleSelectionLabel.setText(total + " elements in selection: " + objectCount + " objects, " + linkCount + " links");
     }
 
     private void updateObjectSelectionView(Object object) {
         selectedObject = object;
         objectNameField.setText(object.getName());
-        objectCompletenessComponent.setValue(object.getCompleteness().getValue());
-        objectLocalCompletenessComponent.setValue(object.getLocalCompleteness().getValue());
-        objectQuantityComponent.setValue(object.getQuantity().getValue());
+        objectCompletionComponent.setValue(object.getCompletion());
+        objectLocalCompletionComponent.setValue(object.getLocalCompletion());
+        objectQuantityComponent.setValue(object.getQuantity());
+        objectQuantityCompletionComponent.setValue(object.getQuantityCompletion());
     }
 
-    private void updatePossessionLinkSelectionView(PossessionLink possessionLink) {
-        selectedPossessionLink = possessionLink;
-        possessionLinkEndComponent.setDisplayedLink(possessionLink);
-        possessionLinkNameField.setText(possessionLink.getName());
-        possessionLinkCompletenessComponent.setValue(possessionLink.getCompleteness().getValue());
-        possessionLinkFactorComponent.setValue(possessionLink.getFactor());
-    }
-
-    private void updateComparisonLinkSelectionView(ComparisonLink comparisonLink) {
-        selectedComparisonLink = comparisonLink;
-        comparisonLinkEndComponent.setDisplayedLink(comparisonLink);
-        comparisonLinkNameField.setText(comparisonLink.getName());
-        comparisonLinkCompletenessComponent.setValue(comparisonLink.getCompleteness().getValue());
-        comparisonLinkFactorComponent.setValue(comparisonLink.getFactor());
+    private void updateLinkSelectionView(Link link) {
+        selectedLink = link;
+        linkEndComponent.setDisplayedLink(link);
+        linkNameField.setText(link.getName());
+        linkCompletionComponent.setValue(link.getCompletion());
+        linkFactorComponent.setValue(link.getFactor());
     }
 }

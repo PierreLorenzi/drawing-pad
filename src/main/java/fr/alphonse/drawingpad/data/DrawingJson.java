@@ -21,7 +21,5 @@ public class DrawingJson {
 
     private Map<Integer, Position> positions;
 
-    private Map<Integer, Position> possessionLinkCenters;
-
-    private Map<Integer, Position> comparisonLinkCenters;
+    private Map<Integer, Position> linkCenters;
 }

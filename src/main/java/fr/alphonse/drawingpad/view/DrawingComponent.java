@@ -3,18 +3,20 @@ package fr.alphonse.drawingpad.view;
 import fr.alphonse.drawingpad.data.Drawing;
 import fr.alphonse.drawingpad.data.geometry.Position;
 import fr.alphonse.drawingpad.data.geometry.Vector;
-import fr.alphonse.drawingpad.data.model.*;
-import fr.alphonse.drawingpad.data.model.Object;
+import fr.alphonse.drawingpad.data.model.GraphElement;
 import fr.alphonse.drawingpad.data.model.Link;
+import fr.alphonse.drawingpad.data.model.Object;
 import fr.alphonse.drawingpad.document.utils.ChangeDetector;
+import fr.alphonse.drawingpad.document.utils.Graduations;
 import fr.alphonse.drawingpad.view.internal.ModelHandler;
 
 import javax.swing.*;
-import javax.swing.Timer;
 import java.awt.*;
 import java.awt.event.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -25,9 +27,9 @@ public class DrawingComponent extends JComponent {
 
     private final ChangeDetector changeDetector;
 
-    private final List<Vertex> selectedVertices = new ArrayList<>();
+    private final List<GraphElement> selectedElements = new ArrayList<>();
 
-    private final ChangeDetector selectionChangeDetector = new ChangeDetector(selectedVertices);
+    private final ChangeDetector selectionChangeDetector = new ChangeDetector(selectedElements);
 
     private Map<Object, Vector> dragRelativeVectors;
 
@@ -37,17 +39,15 @@ public class DrawingComponent extends JComponent {
 
     private boolean hasDraggedObjects = false;
 
-    private Vertex lastSelectedVertex = null;
+    private GraphElement lastSelectedElement = null;
 
     private Position selectionRectangleOrigin = null;
 
     private Position selectionRectangleDestination = null;
 
-    private Vertex newLinkOrigin = null;
+    private GraphElement newLinkOrigin = null;
 
     private Position newLinkCenter = null;
-
-    private Class<? extends Link> newLinkType = null;
 
     private Link draggedCenterLink = null;
 
@@ -67,15 +67,11 @@ public class DrawingComponent extends JComponent {
 
     private static final float ARROW_LENGTH = 10;
 
-    private static final int CIRCLE_RADIUS = 4;
-
     private static final BasicStroke SHADOW_STROKE = new BasicStroke(3);
 
     private static final BasicStroke SELECTED_LINK_STROKE = new BasicStroke(3);
 
-    private static final BasicStroke POSSESSION_STROKE = new BasicStroke(2);
-
-    private static final BasicStroke COMPARISON_STROKE = new BasicStroke(1);
+    private static final BasicStroke LINK_STROKE = new BasicStroke(1);
 
     private static final int ARROW_KEY_DELTA = 1;
 
@@ -160,8 +156,8 @@ public class DrawingComponent extends JComponent {
         this.repaint();
     }
 
-    public java.util.List<Vertex> getSelection() {
-        return selectedVertices;
+    public java.util.List<GraphElement> getSelection() {
+        return selectedElements;
     }
 
     public ChangeDetector getSelectionChangeDetector() {
@@ -169,18 +165,15 @@ public class DrawingComponent extends JComponent {
     }
 
     public void delete() {
-        for (Vertex selectedVertex: selectedVertices) {
-            switch (selectedVertex) {
+        for (GraphElement selectedElement: selectedElements) {
+            switch (selectedElement) {
                 case Object object -> ModelHandler.deleteObject(object, model);
-                case PossessionLink possessionLink -> ModelHandler.deletePossessionLink(possessionLink, model);
-                case ComparisonLink comparisonLink -> ModelHandler.deleteComparisonLink(comparisonLink, model);
-                case WholeValue ignored -> throw new Error("Whole values not handled as real vertices");
-                case LowerValue ignored -> throw new Error("Lower values not handled as real vertices");
+                case Link link -> ModelHandler.deleteLink(link, model);
             }
         }
-        this.selectedVertices.clear();
+        this.selectedElements.clear();
         this.selectionChangeDetector.notifyChange();
-        lastSelectedVertex = null;
+        lastSelectedElement = null;
         this.changeDetector.notifyChange();
     }
 
@@ -219,7 +212,7 @@ public class DrawingComponent extends JComponent {
             g.drawLine(position.x()-OBJECT_RECTANGLE_RADIUS+2, position.y()+OBJECT_RECTANGLE_RADIUS, position.x()+OBJECT_RECTANGLE_RADIUS, position.y()+OBJECT_RECTANGLE_RADIUS);
             g.drawLine(position.x()+OBJECT_RECTANGLE_RADIUS, position.y()-OBJECT_RECTANGLE_RADIUS+2, position.x()+OBJECT_RECTANGLE_RADIUS, position.y()+OBJECT_RECTANGLE_RADIUS);
 
-            if (selectedVertices.contains(object)) {
+            if (selectedElements.contains(object)) {
                 g.setColor(SELECTION_COLOR);
             }
             else {
@@ -228,44 +221,47 @@ public class DrawingComponent extends JComponent {
             g.fillRect(position.x()-OBJECT_RECTANGLE_RADIUS, position.y()-OBJECT_RECTANGLE_RADIUS, 2*OBJECT_RECTANGLE_RADIUS, 2*OBJECT_RECTANGLE_RADIUS);
         }
 
-        for (PossessionLink possessionLink : model.getGraph().getPossessionLinks()) {
-            boolean isSelected = selectedVertices.contains(possessionLink);
-            drawLink(possessionLink, g, isSelected);
-        }
-
-        for (ComparisonLink comparisonLink : model.getGraph().getComparisonLinks()) {
-            boolean isSelected = selectedVertices.contains(comparisonLink);
-            drawLink(comparisonLink, g, isSelected);
+        for (Link link : model.getGraph().getLinks()) {
+            boolean isSelected = selectedElements.contains(link);
+            drawLink(link, g, isSelected);
         }
 
         // draw link being dragged
         if (newLinkOrigin != null) {
-            var position1 = findVertexPosition(newLinkOrigin);
+            var position1 = findElementPosition(newLinkOrigin);
             Position position2 = findMousePosition();
-            var linePosition1 = computeArrowMeetingPositionWithVertex(newLinkCenter != null ? newLinkCenter : position2, position1, newLinkOrigin);
-            drawLinkBetweenPositions(linePosition1, newLinkCenter, position2, newLinkType, g, false);
+            var linePosition1 = computeArrowMeetingPositionWithElement(newLinkCenter != null ? newLinkCenter : position2, position1, newLinkOrigin);
+            drawLinkBetweenPositions(linePosition1, newLinkCenter, position2, g, false);
         }
 
         g.translate(-translationX, -translationY);
     }
 
     private void drawLink(Link link, Graphics g, boolean isSelected) {
-        var position1 = findVertexPosition(link.getOrigin());
-        var position2 = findVertexPosition(link.getDestination());
+        var position1 = findElementPosition(link.getOriginElement());
+        var position2 = findElementPosition(link.getDestinationElement());
         var center = findLinkCenter(link);
-        var linePosition1 = computeArrowMeetingPositionWithVertex(center != null ? center : position2, position1, link.getOrigin());
-        var linePosition2 = computeArrowMeetingPositionWithVertex(center != null ? center : position1, position2, link.getDestination());
-        drawLinkBetweenPositions(linePosition1, center, linePosition2, link.getClass(), g, isSelected);
+        var linePosition1 = computeArrowMeetingPositionWithElement(center != null ? center : position2, position1, link.getOriginElement());
+        var linePosition2 = computeArrowMeetingPositionWithElement(center != null ? center : position1, position2, link.getDestinationElement());
+        drawLinkBetweenPositions(linePosition1, center, linePosition2, g, isSelected);
+        if (Graduations.isStrictlyGreaterThanOne(link.getFactor().getGraduation())) {
+            Position secondPosition = (center != null) ? center : position2;
+            drawArrow(linePosition1, secondPosition, g);
+        }
+        else if (Graduations.isStrictlyLesserThanOne(link.getFactor().getGraduation())) {
+            Position secondPosition = (center != null) ? center : position1;
+            drawArrow(linePosition2, secondPosition, g);
+        }
     }
 
-    private void drawLinkBetweenPositions(Position position1, Position center, Position position2, Class<? extends  Link> type, Graphics g, boolean isSelected) {
+    private void drawLinkBetweenPositions(Position position1, Position center, Position position2, Graphics g, boolean isSelected) {
         if (isSelected) {
             g.setColor(SELECTION_COLOR);
             ((Graphics2D) g).setStroke(SELECTED_LINK_STROKE);
         }
         else {
-            g.setColor((type.equals(PossessionLink.class)) ? Color.BLACK : Color.GRAY);
-            ((Graphics2D) g).setStroke((type.equals(PossessionLink.class)) ? POSSESSION_STROKE : COMPARISON_STROKE);
+            g.setColor(Color.BLACK);
+            ((Graphics2D) g).setStroke(LINK_STROKE);
         }
         if (center != null) {
             g.drawLine(position1.x(), position1.y(), center.x(), center.y());
@@ -273,13 +269,6 @@ public class DrawingComponent extends JComponent {
         }
         else {
             g.drawLine(position1.x(), position1.y(), position2.x(), position2.y());
-        }
-        Position secondPosition = (center != null) ? center : position2;
-        if (type.equals(PossessionLink.class)) {
-            drawPossessionArrow(position1, secondPosition, g);
-        }
-        else if (type.equals(ComparisonLink.class)) {
-            drawComparisonCircle(position1, secondPosition, g);
         }
     }
 
@@ -290,29 +279,18 @@ public class DrawingComponent extends JComponent {
         return findPointPosition(point);
     }
 
-    private Position findVertexPosition(Vertex vertex) {
-        return switch (vertex) {
+    private Position findElementPosition(GraphElement element) {
+        return switch (element) {
             case Object object -> findObjectPosition(object);
-            case PossessionLink possessionLink -> {
-                var center = model.getPossessionLinkCenters().get(possessionLink);
+            case Link link -> {
+                var center = model.getLinkCenters().get(link);
                 if (center != null) {
                     yield center;
                 }
-                var position1 = findVertexPosition(possessionLink.getOrigin());
-                var position2 = findVertexPosition(possessionLink.getDestination());
+                var position1 = findElementPosition(link.getOriginElement());
+                var position2 = findElementPosition(link.getDestinationElement());
                 yield Position.middle(position1, position2);
             }
-            case ComparisonLink comparisonLink -> {
-                var center = model.getComparisonLinkCenters().get(comparisonLink);
-                if (center != null) {
-                    yield center;
-                }
-                var position1 = findVertexPosition(comparisonLink.getOrigin());
-                var position2 = findVertexPosition(comparisonLink.getDestination());
-                yield Position.middle(position1, position2);
-            }
-            case WholeValue value -> findVertexPosition(value.getOwner());
-            case LowerValue value -> findVertexPosition(value.getOwner());
         };
     }
 
@@ -320,13 +298,10 @@ public class DrawingComponent extends JComponent {
         return model.getPositions().get(object);
     }
 
-    private Position computeArrowMeetingPositionWithVertex(Position position1, Position position2, Vertex vertex) {
-        return switch (vertex) {
+    private Position computeArrowMeetingPositionWithElement(Position position1, Position position2, GraphElement element) {
+        return switch (element) {
             case Object ignored -> computeArrowMeetingPositionWithObject(position1, position2);
-            case PossessionLink ignored -> position2;
-            case ComparisonLink ignored -> position2;
-            case WholeValue value -> computeArrowMeetingPositionWithVertex(position1, position2, value.getOwner());
-            case LowerValue value -> computeArrowMeetingPositionWithVertex(position1, position2, value.getOwner());
+            case Link ignored -> position2;
         };
     }
 
@@ -352,7 +327,7 @@ public class DrawingComponent extends JComponent {
         return position1;
     }
 
-    private void drawPossessionArrow(Position origin, Position destination, Graphics g) {
+    private void drawArrow(Position origin, Position destination, Graphics g) {
         Vector lineVector = Vector.between(origin, destination);
         Vector arrowBaseVector = lineVector.multiply(ARROW_DISTANCE / lineVector.length());
         Position arrowBase = origin.translate(arrowBaseVector);
@@ -366,117 +341,70 @@ public class DrawingComponent extends JComponent {
         g.drawLine(arrowBase.x(), arrowBase.y(), arrowPosition2.x(), arrowPosition2.y());
     }
 
-    private void drawComparisonCircle(Position origin, Position destination, Graphics g) {
-        Position circleBase = computeCircleBase(origin, destination);
-        Color lineColor = g.getColor();
-        g.setColor(Color.WHITE);
-        g.fillOval(circleBase.x(), circleBase.y(), CIRCLE_RADIUS*2, CIRCLE_RADIUS*2);
-        g.setColor(lineColor);
-        g.drawOval(circleBase.x(), circleBase.y(), CIRCLE_RADIUS*2, CIRCLE_RADIUS*2);
-    }
-
-    private static Position computeCircleBase(Position position1, Position position2) {
-        Vector vector = Vector.between(position1, position2);
-        Vector circleCenterVector = vector.multiply(CIRCLE_RADIUS / vector.length());
-        boolean isHorizontal = Math.abs(vector.x()) > Math.abs(vector.y());
-        if (isHorizontal) {
-            if (vector.x() > 0) {
-                return position1.translate(new Vector(0, -CIRCLE_RADIUS + 2*circleCenterVector.y()));
-            }
-            else {
-                return position1.translate(new Vector(-2*CIRCLE_RADIUS, -CIRCLE_RADIUS + 2*circleCenterVector.y()));
-            }
-        }
-        else {
-            if (vector.y() > 0) {
-                return position1.translate(new Vector(-CIRCLE_RADIUS + circleCenterVector.x(), 0));
-            }
-            else {
-                return position1.translate(new Vector(-CIRCLE_RADIUS + circleCenterVector.x(), -2*CIRCLE_RADIUS));
-            }
-        }
-    }
-
     private void reactToClick(MouseEvent event) {
         Position position = findEventPosition(event);
-        var selectedVertex = findVertexAtPosition(position);
+        var selectedElement = findElementAtPosition(position);
         // if drawing a link
         if (this.newLinkOrigin != null) {
             this.repaint();
-            if (selectedVertex == null) {
+            if (selectedElement == null) {
                 this.newLinkCenter = position;
                 return;
             }
             var origin = this.newLinkOrigin;
             var center = this.newLinkCenter;
-            var linkType = this.newLinkType;
             this.newLinkOrigin = null;
             this.newLinkCenter = null;
-            this.newLinkType = null;
             this.repaint();
-            if (selectedVertex == origin) {
+            if (selectedElement == origin) {
                 return;
             }
-            if (linkType.equals(PossessionLink.class) && ModelHandler.addPossessionLink(origin, center, selectedVertex, model)) {
-                changeDetector.notifyChange();
-            }
-            if (linkType.equals(ComparisonLink.class) && ModelHandler.addComparisonLink(origin, center, selectedVertex, model)) {
-                changeDetector.notifyChange();
-            }
+            ModelHandler.addLink(origin, selectedElement, center, model);
+            changeDetector.notifyChange();
             return;
         }
-        // if press with command, add object or possession link
+        // if press with command, add object or link
         if ((event.getModifiersEx() & Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()) != 0) {
-            if (selectedVertex == null) {
+            if (selectedElement == null) {
                 ModelHandler.addObject(position, model);
                 changeDetector.notifyChange();
             }
             else {
-                newLinkOrigin = selectedVertex;
-                newLinkType = PossessionLink.class;
+                newLinkOrigin = selectedElement;
             }
-            return;
-        }
-        // if press with option, add comparison link
-        if ((event.getModifiersEx() & KeyEvent.ALT_DOWN_MASK) != 0) {
-            if (selectedVertex == null) {
-                return;
-            }
-            newLinkOrigin = selectedVertex;
-            newLinkType = ComparisonLink.class;
             return;
         }
         boolean isShiftKeyPressed = (event.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) != 0;
         // link center drag
-        if (!isShiftKeyPressed && selectedVertex instanceof Link link && isPositionAtLinkCenter(position, link)) {
+        if (!isShiftKeyPressed && selectedElement instanceof Link link && isPositionAtLinkCenter(position, link)) {
             this.draggedCenterLink = link;
             var center = findLinkCenter(link);
             this.draggedCenterRelativePosition = Vector.between(position, center);
             this.repaint();
         }
-        this.lastSelectedVertex = selectedVertex;
-        if (selectedVertex == null && !isShiftKeyPressed) {
+        this.lastSelectedElement = selectedElement;
+        if (selectedElement == null && !isShiftKeyPressed) {
             this.selectionRectangleOrigin = position;
         }
-        boolean alreadySelected = selectedVertex != null && selectedVertices.contains(selectedVertex);
-        this.canDrag = !(isShiftKeyPressed && (selectedVertex == null || alreadySelected));
+        boolean alreadySelected = selectedElement != null && selectedElements.contains(selectedElement);
+        this.canDrag = !(isShiftKeyPressed && (selectedElement == null || alreadySelected));
         this.hasDragged = false;
         this.hasDraggedObjects = false;
         if (alreadySelected && isShiftKeyPressed) {
-            selectedVertices.remove(selectedVertex);
+            selectedElements.remove(selectedElement);
             this.selectionChangeDetector.notifyChange();
         }
         if (!isShiftKeyPressed && !alreadySelected) {
-            DrawingComponent.this.selectedVertices.clear();
+            DrawingComponent.this.selectedElements.clear();
             this.selectionChangeDetector.notifyChange();
         }
-        if (selectedVertex != null && !alreadySelected) {
-            this.selectedVertices.add(selectedVertex);
+        if (selectedElement != null && !alreadySelected) {
+            this.selectedElements.add(selectedElement);
             this.selectionChangeDetector.notifyChange();
         }
-        this.dragRelativeVectors = this.selectedVertices.stream()
-                .filter(vertex -> vertex instanceof Object)
-                .map(vertex -> (Object)vertex)
+        this.dragRelativeVectors = this.selectedElements.stream()
+                .filter(element -> element instanceof Object)
+                .map(element -> (Object)element)
                 .collect(Collectors.toMap(Function.identity(), object -> Vector.between(position, model.getPositions().get(object))));
         if (alreadySelected && !isShiftKeyPressed) {
             return;
@@ -492,33 +420,26 @@ public class DrawingComponent extends JComponent {
         return new Position(point.x - this.getBounds().width/2, point.y - this.getBounds().height/2);
     }
 
-    private Vertex findVertexAtPosition(Position position) {
-        Object object = findVertexAtPositionInList(position, model.getGraph().getObjects());
+    private GraphElement findElementAtPosition(Position position) {
+        Object object = findElementAtPositionInList(position, model.getGraph().getObjects());
         if (object != null) {
             return object;
         }
-        PossessionLink possessionLink = findVertexAtPositionInList(position, model.getGraph().getPossessionLinks());
-        if (possessionLink != null) {
-            return possessionLink;
-        }
-        return findVertexAtPositionInList(position, model.getGraph().getComparisonLinks());
+        return findElementAtPositionInList(position, model.getGraph().getLinks());
     }
 
-    private <T extends Vertex> T findVertexAtPositionInList(Position position, List<T> vertices) {
-        Function<Vertex,Integer> computeDistanceFunction = (vertex -> computePositionDistanceFromVertex(position, vertex));
-        return vertices.stream()
-                .filter(vertex -> computeDistanceFunction.apply(vertex) < OBJECT_RADIUS)
+    private <T extends GraphElement> T findElementAtPositionInList(Position position, List<T> elements) {
+        Function<GraphElement,Integer> computeDistanceFunction = (element -> computePositionDistanceFromElement(position, element));
+        return elements.stream()
+                .filter(element -> computeDistanceFunction.apply(element) < OBJECT_RADIUS)
                 .min(Comparator.comparing(computeDistanceFunction))
                 .orElse(null);
     }
 
-    private int computePositionDistanceFromVertex(Position position, Vertex vertex) {
-        return switch (vertex) {
+    private int computePositionDistanceFromElement(Position position, GraphElement element) {
+        return switch (element) {
             case Object object -> findPositionDistanceFromObject(position, object);
-            case PossessionLink possessionLink -> findPositionDistanceFromLink(position, possessionLink);
-            case ComparisonLink comparisonLink -> findPositionDistanceFromLink(position, comparisonLink);
-            case WholeValue ignored -> throw new Error("Whole values not handled as real vertices");
-            case LowerValue ignored -> throw new Error("Lower values not handled as real vertices");
+            case Link link -> findPositionDistanceFromLink(position, link);
         };
     }
 
@@ -530,8 +451,8 @@ public class DrawingComponent extends JComponent {
 
     private int findPositionDistanceFromLink(Position position, Link link) {
 
-        var position1 = findVertexPosition(link.getOrigin());
-        var position2 = findVertexPosition(link.getDestination());
+        var position1 = findElementPosition(link.getOriginElement());
+        var position2 = findElementPosition(link.getDestinationElement());
         var center = findLinkCenter(link);
 
         if (center == null) {
@@ -569,10 +490,7 @@ public class DrawingComponent extends JComponent {
     }
 
     private Position findLinkCenter(Link link) {
-        return switch (link) {
-            case PossessionLink possessionLink -> model.getPossessionLinkCenters().get(possessionLink);
-            case ComparisonLink comparisonLink -> model.getComparisonLinkCenters().get(comparisonLink);
-        };
+        return model.getLinkCenters().get(link);
     }
 
     private void reactToRelease(MouseEvent event) {
@@ -582,12 +500,7 @@ public class DrawingComponent extends JComponent {
             var link = this.draggedCenterLink;
             this.draggedCenterLink = null;
             this.draggedCenterRelativePosition = null;
-            if (link instanceof PossessionLink possessionLink) {
-                this.model.getPossessionLinkCenters().put(possessionLink, newCenter);
-            }
-            else if (link instanceof ComparisonLink comparisonLink) {
-                this.model.getComparisonLinkCenters().put(comparisonLink, newCenter);
-            }
+            this.model.getLinkCenters().put(link, newCenter);
             this.repaint();
             this.changeDetector.notifyChange();
             return;
@@ -601,9 +514,9 @@ public class DrawingComponent extends JComponent {
             this.clearGuides();
             this.repaint();
         }
-        // if several objects are selected, and we click on one of them, it becomes the only selected vertex on mouse up
-        if (!hasDragged && lastSelectedVertex != null && this.selectedVertices.size() > 1 && (event.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) == 0) {
-            this.selectedVertices.removeIf(Predicate.not(Predicate.isEqual(lastSelectedVertex)));
+        // if several objects are selected, and we click on one of them, it becomes the only selected element on mouse up
+        if (!hasDragged && lastSelectedElement != null && this.selectedElements.size() > 1 && (event.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) == 0) {
+            this.selectedElements.removeIf(Predicate.not(Predicate.isEqual(lastSelectedElement)));
             this.repaint();
             this.selectionChangeDetector.notifyChange();
         }
@@ -616,12 +529,7 @@ public class DrawingComponent extends JComponent {
         Position position = findEventPosition(event);
         if (this.draggedCenterLink != null) {
             var newCenter = position.translate(this.draggedCenterRelativePosition);
-            if (this.draggedCenterLink instanceof PossessionLink possessionLink) {
-                this.model.getPossessionLinkCenters().put(possessionLink, newCenter);
-            }
-            else if (this.draggedCenterLink instanceof ComparisonLink comparisonLink) {
-                this.model.getComparisonLinkCenters().put(comparisonLink, newCenter);
-            }
+            this.model.getLinkCenters().put(this.draggedCenterLink, newCenter);
             this.repaint();
             return;
         }
@@ -630,9 +538,9 @@ public class DrawingComponent extends JComponent {
             List<Object> objectsInRectangle = model.getGraph().getObjects().stream()
                     .filter(object -> isInRectangleBetweenPoints(model.getPositions().get(object), selectionRectangleOrigin, selectionRectangleDestination))
                     .toList();
-            this.selectedVertices.clear();
-            this.selectedVertices.addAll(objectsInRectangle);
-            addLinksBetweenVertices(this.selectedVertices);
+            this.selectedElements.clear();
+            this.selectedElements.addAll(objectsInRectangle);
+            addLinksBetweenElements(this.selectedElements);
             this.selectionChangeDetector.notifyChange();
             this.repaint();
             return;
@@ -642,8 +550,8 @@ public class DrawingComponent extends JComponent {
         }
         this.hasDragged = true;
         boolean needsRepaint = false;
-        for (Vertex selectedVertex: selectedVertices) {
-            if (selectedVertex instanceof Object object) {
+        for (GraphElement selectedElement: selectedElements) {
+            if (selectedElement instanceof Object object) {
                 model.getPositions().put(object, position.translate(this.dragRelativeVectors.get(object)));
                 needsRepaint = true;
             }
@@ -655,8 +563,8 @@ public class DrawingComponent extends JComponent {
                 int deltaX = nearbyGuidesX.isEmpty() ? 0 : nearbyGuidesX.get(0);
                 int deltaY = nearbyGuidesY.isEmpty() ? 0 : nearbyGuidesY.get(0);
                 Vector magnetismVector = new Vector(deltaX, deltaY);
-                for (Vertex selectedVertex: selectedVertices) {
-                    if (selectedVertex instanceof Object object) {
+                for (GraphElement selectedElement: selectedElements) {
+                    if (selectedElement instanceof Object object) {
                         model.getPositions().put(object, model.getPositions().get(object).translate(magnetismVector));
                     }
                 }
@@ -674,30 +582,24 @@ public class DrawingComponent extends JComponent {
                 position.y() < Math.max(corner1.y(), corner2.y());
     }
 
-    private void addLinksBetweenVertices(List<Vertex> vertices) {
-        List<PossessionLink> possessionLinksToAdd;
-        List<ComparisonLink> comparisonLinksToAdd;
-        // TODO links from values
+    private void addLinksBetweenElements(List<GraphElement> elements) {
+        List<Link> linksToAdd;
         do {
-            possessionLinksToAdd = model.getGraph().getPossessionLinks().stream()
-                    .filter(link -> !vertices.contains(link) && vertices.contains(link.getOrigin()) && vertices.contains(link.getDestination()))
+            linksToAdd = model.getGraph().getLinks().stream()
+                    .filter(link -> !elements.contains(link) && elements.contains(link.getOriginElement()) && elements.contains(link.getDestinationElement()))
                     .toList();
-            comparisonLinksToAdd = model.getGraph().getComparisonLinks().stream()
-                    .filter(link -> !vertices.contains(link) && vertices.contains(link.getOrigin()) && vertices.contains(link.getDestination()))
-                    .toList();
-            vertices.addAll(possessionLinksToAdd);
-            vertices.addAll(comparisonLinksToAdd);
-        } while (!possessionLinksToAdd.isEmpty() && !comparisonLinksToAdd.isEmpty());
+            elements.addAll(linksToAdd);
+        } while (!linksToAdd.isEmpty());
     }
 
     private List<Integer> findNearbyGuideDeltas(Function<Position, Integer> coordinate) {
-        List<Position> selectedPositions = selectedVertices.stream()
-                .filter(vertex -> vertex instanceof Object)
-                .map(vertex -> (Object)vertex)
+        List<Position> selectedPositions = selectedElements.stream()
+                .filter(element -> element instanceof Object)
+                .map(element -> (Object)element)
                 .map(model.getPositions()::get)
                 .toList();
         return this.model.getGraph().getObjects().stream()
-                .filter(Predicate.not(selectedVertices::contains))
+                .filter(Predicate.not(selectedElements::contains))
                 .map(model.getPositions()::get)
                 .map(coordinate)
                 .flatMap(value -> selectedPositions.stream().map(position -> value - coordinate.apply(position)))
@@ -708,14 +610,14 @@ public class DrawingComponent extends JComponent {
     }
 
     private void fillGuides() {
-        List<Position> selectedPositions = selectedVertices.stream()
-                .filter(vertex -> vertex instanceof Object)
-                .map(vertex -> (Object)vertex)
+        List<Position> selectedPositions = selectedElements.stream()
+                .filter(element -> element instanceof Object)
+                .map(element -> (Object)element)
                 .map(model.getPositions()::get)
                 .toList();
         this.guidesX.clear();
         this.guidesX.addAll(this.model.getGraph().getObjects().stream()
-                .filter(Predicate.not(selectedVertices::contains))
+                .filter(Predicate.not(selectedElements::contains))
                 .map(model.getPositions()::get)
                 .map(Position::x)
                 .filter(x -> selectedPositions.stream().anyMatch(position -> position.x() == x))
@@ -723,7 +625,7 @@ public class DrawingComponent extends JComponent {
                 .toList());
         this.guidesY.clear();
         this.guidesY.addAll(this.model.getGraph().getObjects().stream()
-                .filter(Predicate.not(selectedVertices::contains))
+                .filter(Predicate.not(selectedElements::contains))
                 .map(model.getPositions()::get)
                 .map(Position::y)
                 .filter(y -> selectedPositions.stream().anyMatch(position -> position.y() == y))
@@ -745,18 +647,18 @@ public class DrawingComponent extends JComponent {
 
     private void reactToKey(KeyEvent event) {
         switch (event.getKeyCode()) {
-            case KeyEvent.VK_UP -> moveSelectedVertexBy(ARROW_KEY_UP_DELTA);
-            case KeyEvent.VK_DOWN -> moveSelectedVertexBy(ARROW_KEY_DOWN_DELTA);
-            case KeyEvent.VK_LEFT -> moveSelectedVertexBy(ARROW_KEY_LEFT_DELTA);
-            case KeyEvent.VK_RIGHT -> moveSelectedVertexBy(ARROW_KEY_RIGHT_DELTA);
+            case KeyEvent.VK_UP -> moveSelectedElementBy(ARROW_KEY_UP_DELTA);
+            case KeyEvent.VK_DOWN -> moveSelectedElementBy(ARROW_KEY_DOWN_DELTA);
+            case KeyEvent.VK_LEFT -> moveSelectedElementBy(ARROW_KEY_LEFT_DELTA);
+            case KeyEvent.VK_RIGHT -> moveSelectedElementBy(ARROW_KEY_RIGHT_DELTA);
             case KeyEvent.VK_ESCAPE -> stopDraggingLink();
         }
     }
 
-    private void moveSelectedVertexBy(Vector delta) {
+    private void moveSelectedElementBy(Vector delta) {
         boolean needsRefresh = false;
-        for (Vertex selectedVertex: selectedVertices) {
-            if (selectedVertex instanceof Object object) {
+        for (GraphElement selectedElement: selectedElements) {
+            if (selectedElement instanceof Object object) {
                 this.model.getPositions().put(object, this.model.getPositions().get(object).translate(delta));
                 needsRefresh = true;
             }
@@ -778,7 +680,6 @@ public class DrawingComponent extends JComponent {
         }
         this.newLinkOrigin = null;
         this.newLinkCenter = null;
-        this.newLinkType = null;
         this.repaint();
     }
 }

@@ -1,19 +1,17 @@
 package fr.alphonse.drawingpad.data.model.value;
 
-import fr.alphonse.drawingpad.data.model.Vertex;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-
 @Data
+@Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class GraduatedValue<T extends Enum<T> & Graduation<T>> {
+public class Value {
 
-    private T graduation;
+    private Graduation graduation;
 
     private Double numberInGraduation;
 }

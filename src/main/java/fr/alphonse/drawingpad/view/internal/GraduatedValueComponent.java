@@ -1,8 +1,7 @@
 package fr.alphonse.drawingpad.view.internal;
 
-import fr.alphonse.drawingpad.data.model.value.GraduatedValue;
 import fr.alphonse.drawingpad.data.model.value.Graduation;
-import fr.alphonse.drawingpad.data.model.value.WholeGraduation;
+import fr.alphonse.drawingpad.data.model.value.Value;
 
 import javax.swing.*;
 import java.awt.*;
@@ -10,36 +9,33 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.stream.Stream;
 
-public class GraduatedValueComponent<T extends Enum<T> & Graduation<T>> extends JPanel {
-
-    private final T[] graduations;
+public class GraduatedValueComponent extends JPanel {
 
     private final JComboBox<String> comboBox;
 
     private final JTextField field;
 
-    private GraduatedValue<T> value;
+    private Value value;
 
     private boolean isSettingValue = false;
 
-    private static final Map<WholeGraduation, String> GRADUATION_NAMES = Map.of(
-            WholeGraduation.ZERO, "0",
-            WholeGraduation.LOWEST, "<<",
-            WholeGraduation.LOWER, "<",
-            WholeGraduation.ONE, "1",
-            WholeGraduation.GREATER, ">",
-            WholeGraduation.GREATEST, ">>",
-            WholeGraduation.INFINITY, "∞"
+    private static final Map<Graduation, String> GRADUATION_NAMES = Map.of(
+            Graduation.ZERO, "0",
+            Graduation.LOWEST, "<<",
+            Graduation.LOWER, "<",
+            Graduation.ONE, "1",
+            Graduation.GREATER, ">",
+            Graduation.GREATEST, ">>",
+            Graduation.INFINITY, "∞"
     );
 
-    public GraduatedValueComponent(Class<T> graduationClass) {
+    public GraduatedValueComponent() {
         super();
 
         setBackground(null);
         setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
 
-        graduations = graduationClass.getEnumConstants();
-        comboBox = new JComboBox<>(findLabels(graduations));
+        comboBox = new JComboBox<>(findGraduationLabels());
         comboBox.setMinimumSize(new Dimension(70, 40));
         comboBox.setMaximumSize(new Dimension(70, 40));
         comboBox.addActionListener(arg -> reactToGraduationChange());
@@ -54,11 +50,10 @@ public class GraduatedValueComponent<T extends Enum<T> & Graduation<T>> extends 
         setValue(null);
     }
 
-    private String[] findLabels(T[] graduations) {
-        Stream<String> gradationValues = Arrays.stream(graduations)
-                .map(Graduation::getWholeGraduation)
+    private String[] findGraduationLabels() {
+        Stream<String> gradationValues = Arrays.stream(Graduation.values())
                 .map(GRADUATION_NAMES::get);
-        // on ajoute la valeur nulle au début
+        // add the null value at the beginning
         return Stream.concat(Stream.of(""), gradationValues)
                 .toArray(String[]::new);
     }
@@ -68,7 +63,7 @@ public class GraduatedValueComponent<T extends Enum<T> & Graduation<T>> extends 
             return;
         }
         int index = comboBox.getSelectedIndex();
-        value.setGraduation(index == 0 ? null : graduations[index-1]);
+        value.setGraduation(index == 0 ? null : Graduation.values()[index-1]);
         value.setNumberInGraduation(null);
         updateField();
     }
@@ -99,7 +94,7 @@ public class GraduatedValueComponent<T extends Enum<T> & Graduation<T>> extends 
         }
     }
 
-    public void setValue(GraduatedValue<T> value) {
+    public void setValue(Value value) {
         if (this.value == value) {
             return;
         }
@@ -108,7 +103,7 @@ public class GraduatedValueComponent<T extends Enum<T> & Graduation<T>> extends 
         this.isSettingValue = true;
 
         // select the graduation in the combo box
-        T graduation = value.getGraduation();
+        Graduation graduation = value.getGraduation();
         comboBox.setSelectedIndex(graduation == null ? 0 : graduation.ordinal() + 1);
 
         updateField();
@@ -133,8 +128,8 @@ public class GraduatedValueComponent<T extends Enum<T> & Graduation<T>> extends 
         field.setText("" + number);
     }
 
-    private boolean doesGraduationNeedsValue(T graduation) {
-        return switch (graduation.getWholeGraduation()) {
+    private boolean doesGraduationNeedsValue(Graduation graduation) {
+        return switch (graduation) {
             case ZERO, LOWEST, ONE, GREATEST, INFINITY -> false;
             case LOWER, GREATER -> true;
         };

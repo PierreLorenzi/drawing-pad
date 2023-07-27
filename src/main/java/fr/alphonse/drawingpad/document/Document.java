@@ -5,10 +5,9 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import fr.alphonse.drawingpad.data.Drawing;
 import fr.alphonse.drawingpad.data.DrawingJson;
 import fr.alphonse.drawingpad.data.geometry.Position;
-import fr.alphonse.drawingpad.data.model.ComparisonLink;
 import fr.alphonse.drawingpad.data.model.Graph;
 import fr.alphonse.drawingpad.data.model.Object;
-import fr.alphonse.drawingpad.data.model.PossessionLink;
+import fr.alphonse.drawingpad.data.model.Link;
 import fr.alphonse.drawingpad.document.utils.ChangeDetector;
 import fr.alphonse.drawingpad.document.utils.DocumentUtils;
 import fr.alphonse.drawingpad.document.utils.GraphHandler;
@@ -52,12 +51,10 @@ public class Document {
         this.model = Drawing.builder()
                 .graph(Graph.builder()
                         .objects(new ArrayList<>())
-                        .possessionLinks(new ArrayList<>())
-                        .comparisonLinks(new ArrayList<>())
+                        .links(new ArrayList<>())
                         .build())
                 .positions(new HashMap<>())
-                .possessionLinkCenters(new HashMap<>())
-                .comparisonLinkCenters(new HashMap<>())
+                .linkCenters(new HashMap<>())
                 .build();
         this.changeDetector = new ChangeDetector(model);
         this.windowName = windowName;
@@ -82,36 +79,27 @@ public class Document {
 
         // resolve references
         fillLinkEnds(graph);
-        fillValueOwners(graph);
 
         // copy lists
         List<Object> objects = new ArrayList<>(graph.getObjects());
-        List<PossessionLink> possessionLinks = new ArrayList<>(graph.getPossessionLinks());
-        List<ComparisonLink> comparisonLinks = new ArrayList<>(graph.getComparisonLinks());
+        List<Link> links = new ArrayList<>(graph.getLinks());
         Map<Object, Position> positions = json.getPositions().keySet().stream().collect(Collectors.toMap(id -> findObjectWithId(graph, id), json.getPositions()::get));
-        Map<PossessionLink, Position> possessionLinkCenters = json.getPossessionLinkCenters().keySet().stream().collect(Collectors.toMap(id -> findPossessionLinkWithId(graph, id), json.getPossessionLinkCenters()::get));
-        Map<ComparisonLink, Position> comparisonLinkCenters = json.getComparisonLinkCenters().keySet().stream().collect(Collectors.toMap(id -> findComparisonLinkWithId(graph, id), json.getComparisonLinkCenters()::get));
+        Map<Link, Position> linkCenters = json.getLinkCenters().keySet().stream().collect(Collectors.toMap(id -> findLinkWithId(graph, id), json.getLinkCenters()::get));
 
         return Drawing.builder()
                 .graph(Graph.builder()
                         .objects(objects)
-                        .possessionLinks(possessionLinks)
-                        .comparisonLinks(comparisonLinks)
+                        .links(links)
                         .build())
                 .positions(positions)
-                .possessionLinkCenters(possessionLinkCenters)
-                .comparisonLinkCenters(comparisonLinkCenters)
+                .linkCenters(linkCenters)
                 .build();
     }
 
     private static void fillLinkEnds(Graph graph) {
-        for (PossessionLink possessionLink: graph.getPossessionLinks()) {
-            possessionLink.setOrigin(GraphHandler.findReference(possessionLink.getOriginReference(), graph));
-            possessionLink.setDestination(GraphHandler.findReference(possessionLink.getDestinationReference(), graph));
-        }
-        for (ComparisonLink comparisonLink: graph.getComparisonLinks()) {
-            comparisonLink.setOrigin(GraphHandler.findReference(comparisonLink.getOriginReference(), graph));
-            comparisonLink.setDestination(GraphHandler.findReference(comparisonLink.getDestinationReference(), graph));
+        for (Link link : graph.getLinks()) {
+            link.setOriginElement(GraphHandler.findGraphElementAtReference(link.getOriginReference(), graph));
+            link.setDestinationElement(GraphHandler.findGraphElementAtReference(link.getDestinationReference(), graph));
         }
     }
 
@@ -121,30 +109,10 @@ public class Document {
                 .findFirst().orElseThrow();
     }
 
-    private static PossessionLink findPossessionLinkWithId(Graph graph, int id) {
-        return graph.getPossessionLinks().stream()
+    private static Link findLinkWithId(Graph graph, int id) {
+        return graph.getLinks().stream()
                 .filter(link -> link.getId() == id)
                 .findFirst().orElseThrow();
-    }
-
-    private static ComparisonLink findComparisonLinkWithId(Graph graph, int id) {
-        return graph.getComparisonLinks().stream()
-                .filter(link -> link.getId() == id)
-                .findFirst().orElseThrow();
-    }
-
-    private static void fillValueOwners(Graph graph) {
-        for (Object object: graph.getObjects()) {
-            object.getCompleteness().setOwner(object);
-            object.getQuantity().setOwner(object);
-            object.getQuantity().getCompleteness().setOwner(object.getQuantity());
-        }
-        for (PossessionLink possessionLink: graph.getPossessionLinks()) {
-            possessionLink.getCompleteness().setOwner(possessionLink);
-        }
-        for (ComparisonLink comparisonLink: graph.getComparisonLinks()) {
-            comparisonLink.getCompleteness().setOwner(comparisonLink);
-        }
     }
 
     private void listenToChanges() {
@@ -347,10 +315,8 @@ public class Document {
                 .graph(model.getGraph())
                 .positions(model.getPositions().keySet().stream()
                         .collect(Collectors.toMap(Object::getId,model.getPositions()::get)))
-                .possessionLinkCenters(model.getPossessionLinkCenters().keySet().stream()
-                        .collect(Collectors.toMap(PossessionLink::getId,model.getPossessionLinkCenters()::get)))
-                .comparisonLinkCenters(model.getComparisonLinkCenters().keySet().stream()
-                        .collect(Collectors.toMap(ComparisonLink::getId,model.getComparisonLinkCenters()::get)))
+                .linkCenters(model.getLinkCenters().keySet().stream()
+                        .collect(Collectors.toMap(Link::getId,model.getLinkCenters()::get)))
                 .build();
     }
 

@@ -15,7 +15,5 @@ public class Graph {
 
     private List<Object> objects;
 
-    private List<PossessionLink> possessionLinks;
-
-    private List<ComparisonLink> comparisonLinks;
+    private List<Link> links;
 }

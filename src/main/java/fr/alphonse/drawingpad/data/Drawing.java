@@ -1,10 +1,9 @@
 package fr.alphonse.drawingpad.data;
 
 import fr.alphonse.drawingpad.data.geometry.Position;
-import fr.alphonse.drawingpad.data.model.ComparisonLink;
 import fr.alphonse.drawingpad.data.model.Graph;
 import fr.alphonse.drawingpad.data.model.Object;
-import fr.alphonse.drawingpad.data.model.PossessionLink;
+import fr.alphonse.drawingpad.data.model.Link;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,7 +21,5 @@ public class Drawing {
 
     private Map<Object, Position> positions;
 
-    private Map<PossessionLink, Position> possessionLinkCenters;
-
-    private Map<ComparisonLink, Position> comparisonLinkCenters;
+    private Map<Link, Position> linkCenters;
 }

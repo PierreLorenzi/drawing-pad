@@ -2,10 +2,12 @@ package fr.alphonse.drawingpad.view.internal;
 
 import fr.alphonse.drawingpad.data.Drawing;
 import fr.alphonse.drawingpad.data.geometry.Position;
+import fr.alphonse.drawingpad.data.model.GraphElement;
+import fr.alphonse.drawingpad.data.model.Link;
 import fr.alphonse.drawingpad.data.model.Object;
-import fr.alphonse.drawingpad.data.model.*;
-import fr.alphonse.drawingpad.data.model.value.GraduatedValue;
-import fr.alphonse.drawingpad.document.utils.GraphHandler;
+import fr.alphonse.drawingpad.data.model.reference.Reference;
+import fr.alphonse.drawingpad.data.model.reference.ReferenceType;
+import fr.alphonse.drawingpad.data.model.value.Value;
 import lombok.experimental.UtilityClass;
 
 import java.util.ArrayList;
@@ -22,88 +24,54 @@ public class ModelHandler {
 
     private static Object makeObject(Drawing drawing) {
         var object = new Object();
-        var id = findAvailableVertexId(drawing.getGraph().getObjects());
+        var id = findAvailableId(drawing.getGraph().getObjects());
         object.setId(id);
-        object.setCompleteness(LowerValue.builder()
-                .value(new GraduatedValue<>())
-                .owner(object)
-                .build());
-        object.setQuantity(WholeValue.builder()
-                .value(new GraduatedValue<>())
-                .owner(object)
-                .build());
-        object.getQuantity().setCompleteness(LowerValue.builder()
-                .value(new GraduatedValue<>())
-                .owner(object.getQuantity())
-                .build());
-        object.setLocalCompleteness(LowerValue.builder()
-                .value(new GraduatedValue<>())
-                .owner(object)
-                .build());
+        object.setCompletion(new Value());
+        object.setQuantity(new Value());
+        object.setQuantityCompletion(new Value());
+        object.setLocalCompletion(new Value());
         return object;
     }
 
-    private static int findAvailableVertexId(List<? extends Vertex> vertices) {
-        int maxId = vertices.stream()
-                .mapToInt(Vertex::getId)
+    private static int findAvailableId(List<? extends GraphElement> elements) {
+        int maxId = elements.stream()
+                .mapToInt(GraphElement::getId)
                 .max()
                 .orElse(0);
         return 1 + maxId;
     }
 
-    public boolean addPossessionLink(Vertex origin, Position center, Vertex destination, Drawing drawing) {
-        PossessionLink possessionLink = makePossessionLink(origin, destination, drawing);
-        drawing.getGraph().getPossessionLinks().add(possessionLink);
+    public void addLink(GraphElement originElement, GraphElement destinationElement, Position center, Drawing drawing) {
+        Link link = makeLink(originElement, destinationElement, drawing);
+        drawing.getGraph().getLinks().add(link);
         if (center != null) {
-            drawing.getPossessionLinkCenters().put(possessionLink, center);
+            drawing.getLinkCenters().put(link, center);
         }
-        return true;
     }
 
-    private static PossessionLink makePossessionLink(Vertex origin, Vertex destination, Drawing drawing) {
-        var link = new PossessionLink();
-        var id = findAvailableVertexId(drawing.getGraph().getPossessionLinks());
+    private static Link makeLink(GraphElement originElement, GraphElement destinationElement, Drawing drawing) {
+        var link = new Link();
+        var id = findAvailableId(drawing.getGraph().getLinks());
         link.setId(id);
-        link.setOrigin(origin);
-        link.setOriginReference(GraphHandler.makeVertexReference(origin, drawing.getGraph()));
-        link.setDestination(destination);
-        link.setDestinationReference(GraphHandler.makeVertexReference(destination, drawing.getGraph()));
-        link.setFactor(new GraduatedValue<>());
-        link.setCompleteness(LowerValue.builder()
-                .value(new GraduatedValue<>())
-                .owner(link)
-                .build());
+        link.setOriginElement(originElement);
+        link.setOriginReference(makeReferenceForElement(originElement));
+        link.setDestinationElement(destinationElement);
+        link.setDestinationReference(makeReferenceForElement(destinationElement));
+        link.setFactor(new Value());
+        link.setCompletion(new Value());
         return link;
     }
 
-    public boolean addComparisonLink(Vertex origin, Position center, Vertex destination, Drawing drawing) {
-        ComparisonLink comparisonLink = makeComparisonLink(origin, destination, drawing);
-        drawing.getGraph().getComparisonLinks().add(comparisonLink);
-        if (center != null) {
-            drawing.getComparisonLinkCenters().put(comparisonLink, center);
-        }
-        return true;
-    }
-
-    private static ComparisonLink makeComparisonLink(Vertex origin, Vertex destination, Drawing drawing) {
-        var link = new ComparisonLink();
-        var id = findAvailableVertexId(drawing.getGraph().getComparisonLinks());
-        link.setId(id);
-        link.setOrigin(origin);
-        link.setOriginReference(GraphHandler.makeVertexReference(origin, drawing.getGraph()));
-        link.setDestination(destination);
-        link.setDestinationReference(GraphHandler.makeVertexReference(destination, drawing.getGraph()));
-        link.setFactor(new GraduatedValue<>());
-        link.setCompleteness(LowerValue.builder()
-                .value(new GraduatedValue<>())
-                .owner(link)
-                .build());
-        return link;
+    private Reference makeReferenceForElement(GraphElement element) {
+        return switch (element) {
+            case Object ignored -> new Reference(ReferenceType.OBJECT, element.getId());
+            case Link ignored -> new Reference(ReferenceType.DIRECT_LINK, element.getId());
+        };
     }
 
     public static void deleteObject(Object object, Drawing drawing) {
-        List<Vertex> dependentVertices = listDependentVertices(object, drawing);
-        removeVerticesFromDrawing(dependentVertices, drawing);
+        List<GraphElement> dependentElements = listDependentElements(object, drawing);
+        removeElementsFromDrawing(dependentElements, drawing);
         deleteObjectWithoutDependents(object, drawing);
     }
 
@@ -112,65 +80,36 @@ public class ModelHandler {
         drawing.getPositions().remove(object);
     }
 
-    private static List<Vertex> listDependentVertices(Vertex vertex, Drawing drawing) {
-        List<Vertex> vertices = new ArrayList<>();
+    private static List<GraphElement> listDependentElements(GraphElement element, Drawing drawing) {
+        List<GraphElement> elements = new ArrayList<>();
 
-        // inner values
-        if (vertex.getCompleteness() != null) {
-            vertices.addAll(listDependentVertices(vertex.getCompleteness(), drawing));
-        }
-        if (vertex instanceof Object object) {
-            vertices.addAll(listDependentVertices(object.getQuantity(), drawing));
-        }
-
-        for (PossessionLink possessionLink : drawing.getGraph().getPossessionLinks()) {
-            if (possessionLink.getOrigin() == vertex || possessionLink.getDestination() == vertex) {
-                vertices.addAll(listDependentVertices(possessionLink, drawing));
-                vertices.add(possessionLink);
+        for (Link link : drawing.getGraph().getLinks()) {
+            if (link.getOriginElement() == element || link.getDestinationElement() == element) {
+                elements.addAll(listDependentElements(link, drawing));
+                elements.add(link);
             }
         }
 
-        for (ComparisonLink comparisonLink : drawing.getGraph().getComparisonLinks()) {
-            if (comparisonLink.getOrigin() == vertex || comparisonLink.getDestination() == vertex) {
-                vertices.addAll(listDependentVertices(comparisonLink, drawing));
-                vertices.add(comparisonLink);
-            }
-        }
-
-        return vertices;
+        return elements;
     }
 
-    private static void removeVerticesFromDrawing(List<Vertex> vertices, Drawing drawing) {
-        for (Vertex vertex: vertices) {
-            switch (vertex) {
+    private static void removeElementsFromDrawing(List<GraphElement> elements, Drawing drawing) {
+        for (GraphElement element: elements) {
+            switch (element) {
                 case Object object -> deleteObjectWithoutDependents(object, drawing);
-                case PossessionLink possessionLink -> deletePossessionLinkWithoutDependents(possessionLink, drawing);
-                case ComparisonLink comparisonLink -> deleteComparisonLinkWithoutDependents(comparisonLink, drawing);
-                case WholeValue ignored -> throw new Error("Whole values not handled as real vertices");
-                case LowerValue ignored -> throw new Error("Lower values not handled as real vertices");
+                case Link link -> deleteLinkWithoutDependents(link, drawing);
             }
         }
     }
 
-    public static void deletePossessionLink(PossessionLink possessionLink, Drawing drawing) {
-        List<Vertex> dependentVertices = listDependentVertices(possessionLink, drawing);
-        removeVerticesFromDrawing(dependentVertices, drawing);
-        deletePossessionLinkWithoutDependents(possessionLink, drawing);
+    public static void deleteLink(Link link, Drawing drawing) {
+        List<GraphElement> dependentElements = listDependentElements(link, drawing);
+        removeElementsFromDrawing(dependentElements, drawing);
+        deleteLinkWithoutDependents(link, drawing);
     }
 
-    public static void deletePossessionLinkWithoutDependents(PossessionLink possessionLink, Drawing drawing) {
-        drawing.getGraph().getPossessionLinks().remove(possessionLink);
-        drawing.getPossessionLinkCenters().remove(possessionLink);
-    }
-
-    public static void deleteComparisonLink(ComparisonLink comparisonLink, Drawing drawing) {
-        List<Vertex> dependentVertices = listDependentVertices(comparisonLink, drawing);
-        removeVerticesFromDrawing(dependentVertices, drawing);
-        deleteComparisonLinkWithoutDependents(comparisonLink, drawing);
-    }
-
-    public static void deleteComparisonLinkWithoutDependents(ComparisonLink comparisonLink, Drawing drawing) {
-        drawing.getGraph().getComparisonLinks().remove(comparisonLink);
-        drawing.getComparisonLinkCenters().remove(comparisonLink);
+    public static void deleteLinkWithoutDependents(Link link, Drawing drawing) {
+        drawing.getGraph().getLinks().remove(link);
+        drawing.getLinkCenters().remove(link);
     }
 }
