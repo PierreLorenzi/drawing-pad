@@ -3,13 +3,9 @@ package fr.alphonse.drawingpad.document;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import fr.alphonse.drawingpad.data.Drawing;
 import fr.alphonse.drawingpad.data.DrawingJson;
-import fr.alphonse.drawingpad.data.geometry.Position;
-import fr.alphonse.drawingpad.data.model.Object;
-import fr.alphonse.drawingpad.data.model.*;
 import fr.alphonse.drawingpad.document.utils.ChangeDetector;
 import fr.alphonse.drawingpad.document.utils.DocumentUtils;
 import fr.alphonse.drawingpad.document.utils.GraphHandler;
-import fr.alphonse.drawingpad.document.utils.ModelStateManager;
 import fr.alphonse.drawingpad.view.DrawingComponent;
 import fr.alphonse.drawingpad.view.InfoComponent;
 
@@ -19,10 +15,10 @@ import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.*;
+import java.util.Objects;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 public class Document {
 
@@ -47,92 +43,22 @@ public class Document {
     private boolean wasModifiedSinceLastSave = false;
 
     public Document(String windowName) {
-        this.model = makeEmptyModel();
-        this.changeDetector = new ChangeDetector<>(model, Document::mapModelToJson);
+        this.model = GraphHandler.makeEmptyModel();
+        this.changeDetector = new ChangeDetector<>(model, GraphHandler::mapModelToJson);
         this.windowName = windowName;
         listenToChanges();
-    }
-
-    private static Drawing makeEmptyModel() {
-        return Drawing.builder()
-                .graph(Graph.builder()
-                        .objects(new ArrayList<>())
-                        .completions(new ArrayList<>())
-                        .quantities(new ArrayList<>())
-                        .links(new ArrayList<>())
-                        .build())
-                .positions(new HashMap<>())
-                .completionPositions(new HashMap<>())
-                .quantityPositions(new HashMap<>())
-                .linkCenters(new HashMap<>())
-                .note("")
-                .build();
     }
 
     public Document(Path path) throws IOException {
         this.path = path;
         this.model = importFile(path);
-        this.changeDetector = new ChangeDetector<>(model, Document::mapModelToJson);
+        this.changeDetector = new ChangeDetector<>(model, GraphHandler::mapModelToJson);
         listenToChanges();
     }
 
     private static Drawing importFile(Path path) throws IOException {
         DrawingJson json = new JsonMapper().readValue(path.toFile(), DrawingJson.class);
-        return mapJsonToModel(json);
-    }
-
-    private static Drawing mapJsonToModel(DrawingJson json) {
-        Drawing model = makeEmptyModel();
-        fillModelWithJson(model, json);
-        return model;
-    }
-
-    private static void fillModelWithJson(Drawing model, DrawingJson json) {
-
-        Graph jsonGraph = json.getGraph();
-        Graph newGraph = ModelStateManager.deepCopy(jsonGraph, Graph.class);
-
-        // resolve references
-        fillLinkOutlets(newGraph);
-        fillVertices(newGraph);
-
-        model.setGraph(newGraph);
-
-        Map<Object, Position> positions = json.getPositions().keySet().stream().collect(Collectors.toMap(id -> GraphHandler.findGraphElementWithId(newGraph.getObjects(), id), json.getPositions()::get));
-        Map<Completion, Position> completionPositions = json.getCompletionPositions().keySet().stream().collect(Collectors.toMap(id -> GraphHandler.findGraphElementWithId(newGraph.getCompletions(), id), json.getCompletionPositions()::get));
-        Map<Quantity, Position> quantityPositions = json.getQuantityPositions().keySet().stream().collect(Collectors.toMap(id -> GraphHandler.findGraphElementWithId(newGraph.getQuantities(), id), json.getQuantityPositions()::get));
-        Map<Link, Position> linkCenters = json.getLinkCenters().keySet().stream().collect(Collectors.toMap(id -> GraphHandler.findGraphElementWithId(newGraph.getLinks(), id), json.getLinkCenters()::get));
-
-        model.getPositions().putAll(positions);
-        model.getCompletionPositions().putAll(completionPositions);
-        model.getQuantityPositions().putAll(quantityPositions);
-        model.getLinkCenters().putAll(linkCenters);
-
-        model.setNote(json.getNote());
-    }
-
-    private static void fillLinkOutlets(Graph graph) {
-        for (Link link : graph.getLinks()) {
-            link.setDirectFactor(DirectFactor.builder()
-                    .link(link)
-                    .build());
-            link.setReverseFactor(ReverseFactor.builder()
-                    .link(link)
-                    .build());
-        }
-    }
-
-    private static void fillVertices(Graph graph) {
-        for (Link link : graph.getLinks()) {
-            link.setOrigin(GraphHandler.findVertexAtReference(link.getOriginReference(), graph));
-            link.setDestination(GraphHandler.findVertexAtReference(link.getDestinationReference(), graph));
-        }
-        for (Completion completion: graph.getCompletions()) {
-            completion.setBase(GraphHandler.findVertexAtReference(completion.getBaseReference(), graph));
-        }
-        for (Quantity quantity: graph.getQuantities()) {
-            quantity.setBase(GraphHandler.findVertexAtReference(quantity.getBaseReference(), graph));
-        }
+        return GraphHandler.mapJsonToModel(json);
     }
 
     private void listenToChanges() {
@@ -282,7 +208,7 @@ public class Document {
 
     private void changeModel(DrawingJson json) {
         clearModel(this.model);
-        fillModelWithJson(this.model, json);
+        GraphHandler.fillModelWithJson(this.model, json);
         this.changeDetector.notifyChangeCausedBy(this);
     }
 
@@ -332,27 +258,12 @@ public class Document {
     }
 
     public void writeFile() {
-        DrawingJson json = mapModelToJson(model);
+        DrawingJson json = GraphHandler.mapModelToJson(model);
         try {
             new JsonMapper().writeValue(path.toFile(), json);
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    private static DrawingJson mapModelToJson(Drawing model) {
-        return DrawingJson.builder()
-                .graph(ModelStateManager.deepCopy(model.getGraph(), Graph.class))
-                .positions(model.getPositions().keySet().stream()
-                        .collect(Collectors.toMap(Object::getId,model.getPositions()::get)))
-                .completionPositions(model.getCompletionPositions().keySet().stream()
-                        .collect(Collectors.toMap(Completion::getId,model.getCompletionPositions()::get)))
-                .quantityPositions(model.getQuantityPositions().keySet().stream()
-                        .collect(Collectors.toMap(Quantity::getId,model.getQuantityPositions()::get)))
-                .linkCenters(model.getLinkCenters().keySet().stream()
-                        .collect(Collectors.toMap(Link::getId,model.getLinkCenters()::get)))
-                .note(model.getNote())
-                .build();
     }
 
     public void close() {
