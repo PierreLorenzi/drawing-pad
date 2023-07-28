@@ -26,4 +26,6 @@ public class DrawingJson {
     private Map<Integer, Position> quantityPositions;
 
     private Map<Integer, Position> linkCenters;
+
+    private String note;
 }

@@ -65,6 +65,7 @@ public class Document {
                 .completionPositions(new HashMap<>())
                 .quantityPositions(new HashMap<>())
                 .linkCenters(new HashMap<>())
+                .note("")
                 .build();
     }
 
@@ -106,6 +107,8 @@ public class Document {
         model.getCompletionPositions().putAll(completionPositions);
         model.getQuantityPositions().putAll(quantityPositions);
         model.getLinkCenters().putAll(linkCenters);
+
+        model.setNote(json.getNote());
     }
 
     private static void fillLinkOutlets(Graph graph) {
@@ -176,7 +179,7 @@ public class Document {
         drawingComponent = new DrawingComponent(model, changeDetector);
         drawingComponent.setBounds(0, 0, 500, 600);
         frame.add(drawingComponent, BorderLayout.CENTER);
-        InfoComponent infoComponent = new InfoComponent(drawingComponent.getSelection(), drawingComponent.getSelectionChangeDetector(), changeDetector);
+        InfoComponent infoComponent = new InfoComponent(drawingComponent.getSelection(), drawingComponent.getSelectionChangeDetector(), changeDetector, model);
         frame.add(infoComponent, BorderLayout.EAST);
         frame.setSize(800, 600);
         frame.setJMenuBar(menuBar);
@@ -290,6 +293,8 @@ public class Document {
         drawing.getCompletionPositions().clear();
         drawing.getQuantityPositions().clear();
         drawing.getLinkCenters().clear();
+
+        drawing.setNote("");
     }
 
     public void redo() {
@@ -346,6 +351,7 @@ public class Document {
                         .collect(Collectors.toMap(Quantity::getId,model.getQuantityPositions()::get)))
                 .linkCenters(model.getLinkCenters().keySet().stream()
                         .collect(Collectors.toMap(Link::getId,model.getLinkCenters()::get)))
+                .note(model.getNote())
                 .build();
     }
 

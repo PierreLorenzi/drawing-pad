@@ -25,4 +25,6 @@ public class Drawing {
     private Map<Quantity, Position> quantityPositions;
 
     private Map<Link, Position> linkCenters;
+
+    private String note;
 }

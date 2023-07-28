@@ -1,5 +1,6 @@
 package fr.alphonse.drawingpad.view;
 
+import fr.alphonse.drawingpad.data.Drawing;
 import fr.alphonse.drawingpad.data.model.Object;
 import fr.alphonse.drawingpad.data.model.*;
 import fr.alphonse.drawingpad.document.utils.ChangeDetector;
@@ -7,12 +8,20 @@ import fr.alphonse.drawingpad.view.internal.GraduatedValueComponent;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 
 public class InfoComponent extends JPanel {
 
     private final java.util.List<GraphElement> selection;
 
+    private final Drawing model;
+
     private final ChangeDetector<?,?> modelChangeDetector;
+
+    private JTextArea noteField;
 
     private JTextArea multipleSelectionLabel;
 
@@ -54,12 +63,14 @@ public class InfoComponent extends JPanel {
 
     private static final String LINK_SELECTION_CARD = "link";
 
-    public InfoComponent(java.util.List<GraphElement> selection, ChangeDetector<?,?> selectionChangeDetector, ChangeDetector<?,?> modelChangeDetector) {
+    public InfoComponent(java.util.List<GraphElement> selection, ChangeDetector<?,?> selectionChangeDetector, ChangeDetector<?,?> modelChangeDetector, Drawing model) {
         super();
         this.selection = selection;
         this.modelChangeDetector = modelChangeDetector;
+        this.model = model;
 
         selectionChangeDetector.addListener(this, InfoComponent::reactToSelectionChange);
+        modelChangeDetector.addListener(this, InfoComponent::reactToModelChange);
 
         setLayout(new CardLayout());
         add(makeEmptySelectionView(), EMPTY_SELECTION_CARD);
@@ -68,6 +79,8 @@ public class InfoComponent extends JPanel {
         add(makeCompletionSelectionView(), COMPLETION_SELECTION_CARD);
         add(makeQuantitySelectionView(), QUANTITY_SELECTION_CARD);
         add(makeLinkSelectionView(), LINK_SELECTION_CARD);
+
+        noteField.setText(model.getNote());
         switchToCard(EMPTY_SELECTION_CARD);
 
         setBackground(Color.DARK_GRAY);
@@ -75,11 +88,55 @@ public class InfoComponent extends JPanel {
         setPreferredSize(new Dimension(300, 300));
     }
 
-    private static JPanel makeEmptySelectionView() {
-        var view = new JPanel();
-        view.setBackground(null);
+    private JPanel makeEmptySelectionView() {
+        var view = makeInfoPanel();
+        JTextArea textArea = new JTextArea();
+        textArea.setBackground(null);
+        textArea.setForeground(Color.WHITE);
+        textArea.setLineWrap(true);
+        textArea.setWrapStyleWord(true);
+        textArea.setCaretColor(Color.WHITE);
+        disableTabbingInTextAreas(textArea);
+        textArea.setFont(new Font("Verdana", Font.PLAIN, 14));
+        textArea.addFocusListener(new FocusListener() {
+            @Override
+            public void focusGained(FocusEvent e) {
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                InfoComponent.this.model.setNote(textArea.getText());
+                InfoComponent.this.modelChangeDetector.notifyChangeCausedBy(InfoComponent.this);
+            }
+        });
+        JScrollPane scrollPane = new JScrollPane(textArea);
+        scrollPane.getViewport().setBackground(null);
+        scrollPane.getViewport().setOpaque(false);
+        scrollPane.setBackground(null);
+        scrollPane.setOpaque(false);
+        view.add(scrollPane);
+        this.noteField = textArea;
         return view;
     }
+
+    private static void disableTabbingInTextAreas(JTextArea textArea){
+        textArea.addKeyListener(new KeyListener() {
+            @Override
+            public void keyTyped(KeyEvent e) {}
+
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if(e.getKeyChar() == '\t'){
+                    textArea.transferFocus();
+                    e.consume();
+                }
+            }
+
+            @Override
+            public void keyReleased(KeyEvent e) {}
+        });
+    }
+
 
     private JTextArea makeMultipleSelectionView() {
         JTextArea label = new JTextArea();
@@ -284,5 +341,13 @@ public class InfoComponent extends JPanel {
         selectedLink = link;
         linkNameField.setText(link.getName());
         linkFactorComponent.setValue(link.getFactor());
+    }
+
+    private void reactToModelChange() {
+        // we don't need to react to object changes, because they are deselected on undo/redo
+        // But we must update the note if necessary
+        if (!model.getNote().equals(noteField.getText())) {
+            noteField.setText(model.getNote());
+        }
     }
 }
