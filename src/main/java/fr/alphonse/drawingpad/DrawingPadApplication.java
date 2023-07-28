@@ -93,10 +93,22 @@ public class DrawingPadApplication {
 
         editMenu.addSeparator();
 
+        var selectAllMenuItem = new JMenuItem("Select All");
+        selectAllMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_A, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
+        selectAllMenuItem.addActionListener(event -> document.selectAll());
+        editMenu.add(selectAllMenuItem);
+
+        editMenu.addSeparator();
+
         var deleteMenuItem = new JMenuItem("Delete");
         deleteMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0));
         deleteMenuItem.addActionListener(event -> document.delete());
         editMenu.add(deleteMenuItem);
+
+        var duplicateMenuItem = new JMenuItem("Duplicate");
+        duplicateMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_D, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
+        duplicateMenuItem.addActionListener(event -> document.duplicate());
+        editMenu.add(duplicateMenuItem);
 
         return mb;
     }

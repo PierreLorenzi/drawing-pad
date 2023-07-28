@@ -2,8 +2,8 @@ package fr.alphonse.drawingpad.view.internal;
 
 import fr.alphonse.drawingpad.data.Drawing;
 import fr.alphonse.drawingpad.data.geometry.Position;
-import fr.alphonse.drawingpad.data.model.*;
 import fr.alphonse.drawingpad.data.model.Object;
+import fr.alphonse.drawingpad.data.model.*;
 import fr.alphonse.drawingpad.data.model.reference.Reference;
 import fr.alphonse.drawingpad.data.model.reference.ReferenceType;
 import fr.alphonse.drawingpad.data.model.value.Value;
@@ -15,10 +15,11 @@ import java.util.List;
 @UtilityClass
 public class ModelHandler {
 
-    public static void addObject(Position position, Drawing drawing) {
+    public static Object addObject(Position position, Drawing drawing) {
         Object object = makeObject(drawing);
         drawing.getGraph().getObjects().add(object);
         drawing.getPositions().put(object, position);
+        return object;
     }
 
     private static Object makeObject(Drawing drawing) {
@@ -36,10 +37,11 @@ public class ModelHandler {
         return 1 + maxId;
     }
 
-    public static void addCompletion(Vertex base, Position position, Drawing drawing) {
+    public static Completion addCompletion(Vertex base, Position position, Drawing drawing) {
         Completion completion = makeCompletion(base, drawing);
         drawing.getGraph().getCompletions().add(completion);
         drawing.getCompletionPositions().put(completion, position);
+        return completion;
     }
 
     private static Completion makeCompletion(Vertex base, Drawing drawing) {
@@ -53,10 +55,11 @@ public class ModelHandler {
         return completion;
     }
 
-    public static void addQuantity(Vertex base, Position position, Drawing drawing) {
+    public static Quantity addQuantity(Vertex base, Position position, Drawing drawing) {
         Quantity quantity = makeQuantity(base, drawing);
         drawing.getGraph().getQuantities().add(quantity);
         drawing.getQuantityPositions().put(quantity, position);
+        return quantity;
     }
 
     private static Quantity makeQuantity(Vertex base, Drawing drawing) {
@@ -70,12 +73,13 @@ public class ModelHandler {
         return quantity;
     }
 
-    public void addLink(Vertex origin, Vertex destination, Position center, Drawing drawing) {
+    public Link addLink(Vertex origin, Vertex destination, Position center, Drawing drawing) {
         Link link = makeLink(origin, destination, drawing);
         drawing.getGraph().getLinks().add(link);
         if (center != null) {
             drawing.getLinkCenters().put(link, center);
         }
+        return link;
     }
 
     private static Link makeLink(Vertex origin, Vertex destination, Drawing drawing) {
@@ -180,5 +184,104 @@ public class ModelHandler {
     public static void deleteLinkWithoutDependents(Link link, Drawing drawing) {
         drawing.getGraph().getLinks().remove(link);
         drawing.getLinkCenters().remove(link);
+    }
+
+    public static List<GraphElement> copyGraph(List<GraphElement> elements, Drawing drawing) {
+        List<GraphElement> sortedElements = sortElementsInDependenceOrder(elements);
+        List<GraphElement> newElements = new ArrayList<>(elements.size());
+        for (GraphElement element: sortedElements) {
+            GraphElement newElement = switch (element) {
+                case Object object -> copyObject(object, drawing);
+                case Completion completion -> {
+                    Vertex newBase = findCopiedVertex(completion.getBase(), sortedElements, newElements);
+                    yield copyCompletion(completion, newBase, drawing);
+                }
+                case Quantity quantity -> {
+                    Vertex newBase = findCopiedVertex(quantity.getBase(), sortedElements, newElements);
+                    yield copyQuantity(quantity, newBase, drawing);
+                }
+                case Link link -> {
+                    Vertex newOrigin = findCopiedVertex(link.getOrigin(), sortedElements, newElements);
+                    Vertex newDestination = findCopiedVertex(link.getDestination(), sortedElements, newElements);
+                    yield copyLink(link, newOrigin, newDestination, drawing);
+                }
+            };
+            newElements.add(newElement);
+        }
+        return newElements;
+    }
+
+    private static List<GraphElement> sortElementsInDependenceOrder(List<GraphElement> elements) {
+        List<GraphElement> sortedElements = new ArrayList<>(elements.size());
+        while (sortedElements.size() < elements.size()) {
+            for (GraphElement element: elements) {
+                if (sortedElements.contains(element)) {
+                    continue;
+                }
+                boolean canAdd = switch (element) {
+                    case Object ignored -> true;
+                    case Completion completion -> sortedElements.contains(completion.getBase().getElement());
+                    case Quantity quantity -> sortedElements.contains(quantity.getBase().getElement());
+                    case Link link -> sortedElements.contains(link.getOrigin().getElement()) && sortedElements.contains(link.getDestination().getElement());
+                };
+                if (!canAdd) {
+                    continue;
+                }
+                sortedElements.add(element);
+            }
+        }
+        return sortedElements;
+    }
+
+    private static Object copyObject(Object object, Drawing drawing) {
+        Position position = drawing.getPositions().get(object);
+        Object newObject = addObject(position, drawing);
+        newObject.setName(object.getName());
+        return newObject;
+    }
+
+    private static Vertex findCopiedVertex(Vertex vertex, List<GraphElement> elements, List<GraphElement> newElements) {
+        int baseIndex = elements.indexOf(vertex.getElement());
+        GraphElement newBaseElement = newElements.get(baseIndex);
+        return switch (vertex) {
+            case Object ignored -> (Object)newBaseElement;
+            case Completion ignored -> (Completion)newBaseElement;
+            case Quantity ignored -> (Quantity)newBaseElement;
+            case DirectFactor ignored -> ((Link)newBaseElement).getDirectFactor();
+            case ReverseFactor ignored -> ((Link)newBaseElement).getReverseFactor();
+        };
+    }
+
+    private static Completion copyCompletion(Completion completion, Vertex newBase, Drawing drawing) {
+        Position position = drawing.getCompletionPositions().get(completion);
+        Completion newCompletion = addCompletion(newBase, position, drawing);
+        newCompletion.setName(completion.getName());
+        newCompletion.setValue(copyValue(completion.getValue()));
+        newCompletion.setLocalValue(copyValue(completion.getLocalValue()));
+        return newCompletion;
+    }
+
+    private static Value copyValue(Value value) {
+        return Value.builder()
+                .graduation(value.getGraduation())
+                .numberInGraduation(value.getNumberInGraduation())
+                .build();
+    }
+
+    private static Quantity copyQuantity(Quantity quantity, Vertex newBase, Drawing drawing) {
+        Position position = drawing.getQuantityPositions().get(quantity);
+        Quantity newQuantity = addQuantity(newBase, position, drawing);
+        newQuantity.setName(quantity.getName());
+        newQuantity.setValue(copyValue(quantity.getValue()));
+        newQuantity.setLocalValue(copyValue(quantity.getLocalValue()));
+        return newQuantity;
+    }
+
+    private static Link copyLink(Link link, Vertex newOrigin, Vertex newDestination, Drawing drawing) {
+        Position center = drawing.getLinkCenters().get(link);
+        Link newLink = addLink(newOrigin, newDestination, center, drawing);
+        newLink.setName(link.getName());
+        newLink.setFactor(copyValue(link.getFactor()));
+        return newLink;
     }
 }

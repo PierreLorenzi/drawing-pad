@@ -93,9 +93,11 @@ public class DrawingComponent extends JComponent {
 
     private static final int LINK_CENTER_CLICK_RADIUS = 8;
 
-    public static final int INITIAL_DISTANCE_FROM_BASE = 30;
+    private static final int INITIAL_DISTANCE_FROM_BASE = 30;
 
-    public static final int CIRCLE_RADIUS = 6;
+    private static final int CIRCLE_RADIUS = 6;
+
+    private static  final Vector DUPLICATE_SHIFT = new Vector(70, 30);
 
     public DrawingComponent(Drawing model, ChangeDetector changeDetector) {
         super();
@@ -859,5 +861,37 @@ public class DrawingComponent extends JComponent {
         this.newLinkOrigin = null;
         this.newLinkCenter = null;
         this.repaint();
+    }
+
+    public void selectAll() {
+        this.selectedElements.clear();
+        this.selectedElements.addAll(model.getGraph().getObjects());
+        this.selectedElements.addAll(model.getGraph().getCompletions());
+        this.selectedElements.addAll(model.getGraph().getQuantities());
+        this.selectedElements.addAll(model.getGraph().getLinks());
+        this.selectionChangeDetector.notifyChange();
+        repaint();
+    }
+
+    public void duplicate() {
+        if (this.selectedElements.isEmpty()) {
+            return;
+        }
+        List<GraphElement> newElements = ModelHandler.copyGraph(this.selectedElements, this.model);
+
+        // shift the new elements
+        for (GraphElement newElement: newElements) {
+            Position position = findElementPosition(newElement);
+            if (position == null) {
+                continue;
+            }
+            changeElementPosition(newElement, position.translate(DUPLICATE_SHIFT));
+        }
+
+        this.selectedElements.clear();
+        this.selectedElements.addAll(newElements);
+        this.changeDetector.notifyChange();
+        this.selectionChangeDetector.notifyChange();
+        repaint();
     }
 }

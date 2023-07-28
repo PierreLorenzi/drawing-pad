@@ -260,6 +260,14 @@ public class Document {
         this.drawingComponent.delete();
     }
 
+    public void selectAll() {
+        this.drawingComponent.selectAll();
+    }
+
+    public void duplicate() {
+        this.drawingComponent.duplicate();
+    }
+
     public void undo() {
         if (previousModelIndex == null && previousModels.size() == 1) {
             return;
