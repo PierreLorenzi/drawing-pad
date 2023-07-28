@@ -9,7 +9,7 @@ import fr.alphonse.drawingpad.data.model.*;
 import fr.alphonse.drawingpad.document.utils.ChangeDetector;
 import fr.alphonse.drawingpad.document.utils.DocumentUtils;
 import fr.alphonse.drawingpad.document.utils.GraphHandler;
-import fr.alphonse.drawingpad.document.utils.ModelCopier;
+import fr.alphonse.drawingpad.document.utils.ModelStateManager;
 import fr.alphonse.drawingpad.view.DrawingComponent;
 import fr.alphonse.drawingpad.view.InfoComponent;
 
@@ -90,7 +90,7 @@ public class Document {
     private static void fillModelWithJson(Drawing model, DrawingJson json) {
 
         Graph jsonGraph = json.getGraph();
-        Graph newGraph = ModelCopier.deepCopy(jsonGraph, Graph.class);
+        Graph newGraph = ModelStateManager.deepCopy(jsonGraph, Graph.class);
 
         // resolve references
         fillLinkOutlets(newGraph);
@@ -342,7 +342,7 @@ public class Document {
 
     private static DrawingJson mapModelToJson(Drawing model) {
         return DrawingJson.builder()
-                .graph(ModelCopier.deepCopy(model.getGraph(), Graph.class))
+                .graph(ModelStateManager.deepCopy(model.getGraph(), Graph.class))
                 .positions(model.getPositions().keySet().stream()
                         .collect(Collectors.toMap(Object::getId,model.getPositions()::get)))
                 .completionPositions(model.getCompletionPositions().keySet().stream()

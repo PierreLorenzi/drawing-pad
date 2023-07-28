@@ -98,6 +98,7 @@ public class InfoComponent extends JPanel {
         textArea.setCaretColor(Color.WHITE);
         disableTabbingInTextAreas(textArea);
         textArea.setFont(new Font("Verdana", Font.PLAIN, 14));
+        textArea.setMargin(new Insets(0, 2, 0, 0));
         textArea.addFocusListener(new FocusListener() {
             @Override
             public void focusGained(FocusEvent e) {
@@ -348,6 +349,7 @@ public class InfoComponent extends JPanel {
         // But we must update the note if necessary
         if (!model.getNote().equals(noteField.getText())) {
             noteField.setText(model.getNote());
+            noteField.transferFocus();
         }
     }
 }

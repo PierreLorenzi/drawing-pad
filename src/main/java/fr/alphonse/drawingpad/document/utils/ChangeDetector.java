@@ -35,7 +35,7 @@ public class ChangeDetector<T,S> {
 
     public void notifyChangeCausedBy(Object callingListener) {
         S newState = stateFunction.apply(model);
-        if (newState.equals(currentState)) {
+        if (ModelStateManager.areDeepEqual(newState, currentState)) {
             return;
         }
         currentState = newState;

@@ -32,6 +32,8 @@ public class DrawingComponent extends JComponent {
 
     private final ChangeDetector<List<GraphElement>,?> selectionChangeDetector = new ChangeDetector<>(selectedElements, SELECTION_STATE_FUNCTION);
 
+    private Position clickPosition;
+
     private Map<GraphElement, Vector> dragRelativeVectors;
 
     private boolean canDrag = false;
@@ -57,6 +59,7 @@ public class DrawingComponent extends JComponent {
     private final List<Integer> guidesX = new ArrayList<>();
 
     private final List<Integer> guidesY = new ArrayList<>();
+
 
     private static final int OBJECT_RECTANGLE_RADIUS = 8;
 
@@ -442,6 +445,7 @@ public class DrawingComponent extends JComponent {
 
     private void reactToClick(MouseEvent event) {
         Position position = findEventPosition(event);
+        clickPosition = position;
         var clickedVertex = findVertexAtPosition(position);
         // if drawing a link
         if (this.newLinkOrigin != null) {
@@ -714,6 +718,9 @@ public class DrawingComponent extends JComponent {
 
     private void reactToDrag(MouseEvent event) {
         Position position = findEventPosition(event);
+        if (position.equals(clickPosition)) {
+            return;
+        }
         if (this.draggedCenterLink != null) {
             var newCenter = position.translate(this.draggedCenterRelativePosition);
             this.model.getLinkCenters().put(this.draggedCenterLink, newCenter);
@@ -736,12 +743,12 @@ public class DrawingComponent extends JComponent {
             return;
         }
         this.hasDragged = true;
-        boolean needsRepaint = false;
+        hasDraggedObjects = false;
         for (GraphElement selectedElement: dragRelativeVectors.keySet()) {
             changeElementPosition(selectedElement, position.translate(this.dragRelativeVectors.get(selectedElement)));
-            needsRepaint = true;
+            hasDraggedObjects = true;
         }
-        if (needsRepaint) {
+        if (hasDraggedObjects) {
             List<Integer> nearbyGuidesX = findNearbyGuideDeltas(Position::x);
             List<Integer> nearbyGuidesY = findNearbyGuideDeltas(Position::y);
             if (Math.max(nearbyGuidesX.size(), nearbyGuidesY.size()) >= 1) {
@@ -756,7 +763,6 @@ public class DrawingComponent extends JComponent {
             }
             fillGuides();
             this.repaint();
-            this.hasDraggedObjects = true;
         }
     }
 
