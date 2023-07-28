@@ -503,13 +503,21 @@ public class DrawingComponent extends JComponent {
             this.selectedElements.add(clickedElement);
             this.selectionChangeDetector.notifyChange();
         }
-        this.dragRelativeVectors = this.selectedElements.stream()
-                .filter(element -> !(element instanceof Link))
-                .collect(Collectors.toMap(Function.identity(), element -> Vector.between(position, findVertexPosition((Vertex)element))));
+        this.dragRelativeVectors = listElementsToDragAmong(this.selectedElements).stream()
+                .collect(Collectors.toMap(Function.identity(), element -> Vector.between(position, findElementPosition(element))));
         if (alreadySelected && !isShiftKeyPressed) {
             return;
         }
         this.repaint();
+    }
+
+    private Position findElementPosition(GraphElement element) {
+        return switch (element) {
+            case Object object -> findObjectPosition(object);
+            case Completion completion -> findCompletionPosition(completion);
+            case Quantity quantity -> findQuantityPosition(quantity);
+            case Link link -> findLinkCenter(link);
+        };
     }
 
     private Position findEventPosition(MouseEvent event) {
@@ -638,6 +646,14 @@ public class DrawingComponent extends JComponent {
         return new Position(basePosition.x() + INITIAL_DISTANCE_FROM_BASE, basePosition.y());
     }
 
+    private List<GraphElement> listElementsToDragAmong(List<GraphElement> elements) {
+        var newElements = new ArrayList<>(elements);
+        addLinksBetweenElements(newElements);
+        return newElements.stream()
+                .filter(element -> !(element instanceof Link link && model.getLinkCenters().get(link) == null))
+                .toList();
+    }
+
     private void reactToRelease(MouseEvent event) {
         if (this.draggedCenterLink != null) {
             Position position = findEventPosition(event);
@@ -695,11 +711,9 @@ public class DrawingComponent extends JComponent {
         }
         this.hasDragged = true;
         boolean needsRepaint = false;
-        for (GraphElement selectedElement: selectedElements) {
-            if (!(selectedElement instanceof Link)) {
-                changeVertexPosition((Vertex)selectedElement, position.translate(this.dragRelativeVectors.get(selectedElement)));
-                needsRepaint = true;
-            }
+        for (GraphElement selectedElement: dragRelativeVectors.keySet()) {
+            changeElementPosition(selectedElement, position.translate(this.dragRelativeVectors.get(selectedElement)));
+            needsRepaint = true;
         }
         if (needsRepaint) {
             List<Integer> nearbyGuidesX = findNearbyGuideDeltas(Position::x);
@@ -720,13 +734,12 @@ public class DrawingComponent extends JComponent {
         }
     }
 
-    private void changeVertexPosition(Vertex vertex, Position position) {
-        switch (vertex) {
+    private void changeElementPosition(GraphElement element, Position position) {
+        switch (element) {
             case Object object -> model.getPositions().put(object, position);
             case Completion completion -> model.getCompletionPositions().put(completion, position);
             case Quantity quantity -> model.getQuantityPositions().put(quantity, position);
-            case DirectFactor ignored -> throw new Error("Can't move DirectFactor");
-            case ReverseFactor ignored -> throw new Error("Can't move ReverseFactor");
+            case Link link -> model.getLinkCenters().put(link, position);
         }
     }
 
