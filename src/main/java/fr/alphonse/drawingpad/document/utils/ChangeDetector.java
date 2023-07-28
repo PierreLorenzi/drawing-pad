@@ -4,40 +4,52 @@ import java.lang.ref.SoftReference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
-public class ChangeDetector {
+public class ChangeDetector<T,S> {
 
-    private Object model;
+    private final T model;
+
+    private S currentState;
+
+    private final Function<T, S> stateFunction;
 
     private final List<ListenerReference<?>> listenerReferences = new ArrayList<>();
 
-    private int oldHashcode;
+    private record ListenerReference<U>(SoftReference<U> reference, Consumer<U> action) {}
 
-    private record ListenerReference<T>(SoftReference<T> reference, Consumer<T> action) {}
-
-    public ChangeDetector(Object model) {
+    public ChangeDetector(T model, Function<T, S> stateFunction) {
         this.model = model;
-        this.oldHashcode = model.hashCode();
+        this.stateFunction = stateFunction;
+        this.currentState = stateFunction.apply(model);
     }
 
-    public <T> void addListener(T listener, Consumer<T> action) {
+    public <U> void addListener(U listener, Consumer<U> action) {
         var listenerReference = new ListenerReference<>(new SoftReference<>(listener), action);
         listenerReferences.add(listenerReference);
     }
 
     public void notifyChange() {
-        int newHashcode = model.hashCode();
-        if (newHashcode == oldHashcode) {
+        notifyChangeCausedBy(null);
+    }
+
+    public void notifyChangeCausedBy(Object callingListener) {
+        S newState = stateFunction.apply(model);
+        if (newState.equals(currentState)) {
             return;
         }
-        oldHashcode = newHashcode;
+        currentState = newState;
         for (ListenerReference<?> listenerReference: listenerReferences) {
+            if (callingListener != null && listenerReference.reference().get() == callingListener) {
+                continue;
+            }
             callListener(listenerReference);
         }
         listenerReferences.removeIf(listenerReference -> listenerReference.reference.get() == null);
+
     }
 
-    private static <T> void callListener(ListenerReference<T> listenerReference) {
+    private static <U> void callListener(ListenerReference<U> listenerReference) {
         var target = listenerReference.reference.get();
         if (target == null) {
             return;
@@ -45,8 +57,7 @@ public class ChangeDetector {
         listenerReference.action.accept(target);
     }
 
-    public void reinitModel(Object model) {
-        this.model = model;
-        this.oldHashcode = model.hashCode();
+    public S getCurrentState() {
+        return currentState;
     }
 }

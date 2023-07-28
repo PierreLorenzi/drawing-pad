@@ -1,15 +1,15 @@
 package fr.alphonse.drawingpad.document;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import fr.alphonse.drawingpad.data.Drawing;
 import fr.alphonse.drawingpad.data.DrawingJson;
 import fr.alphonse.drawingpad.data.geometry.Position;
-import fr.alphonse.drawingpad.data.model.*;
 import fr.alphonse.drawingpad.data.model.Object;
+import fr.alphonse.drawingpad.data.model.*;
 import fr.alphonse.drawingpad.document.utils.ChangeDetector;
 import fr.alphonse.drawingpad.document.utils.DocumentUtils;
 import fr.alphonse.drawingpad.document.utils.GraphHandler;
+import fr.alphonse.drawingpad.document.utils.ModelCopier;
 import fr.alphonse.drawingpad.view.DrawingComponent;
 import fr.alphonse.drawingpad.view.InfoComponent;
 
@@ -26,11 +26,11 @@ import java.util.stream.Collectors;
 
 public class Document {
 
-    private Drawing model;
+    private final Drawing model;
 
-    private final ChangeDetector changeDetector;
+    private final ChangeDetector<Drawing, DrawingJson> changeDetector;
 
-    private final List<Drawing> previousModels = new ArrayList<>();
+    private final List<DrawingJson> previousModels = new ArrayList<>();
 
     private Integer previousModelIndex;
 
@@ -47,7 +47,14 @@ public class Document {
     private boolean wasModifiedSinceLastSave = false;
 
     public Document(String windowName) {
-        this.model = Drawing.builder()
+        this.model = makeEmptyModel();
+        this.changeDetector = new ChangeDetector<>(model, Document::mapModelToJson);
+        this.windowName = windowName;
+        listenToChanges();
+    }
+
+    private static Drawing makeEmptyModel() {
+        return Drawing.builder()
                 .graph(Graph.builder()
                         .objects(new ArrayList<>())
                         .completions(new ArrayList<>())
@@ -59,15 +66,12 @@ public class Document {
                 .quantityPositions(new HashMap<>())
                 .linkCenters(new HashMap<>())
                 .build();
-        this.changeDetector = new ChangeDetector(model);
-        this.windowName = windowName;
-        listenToChanges();
     }
 
     public Document(Path path) throws IOException {
         this.path = path;
         this.model = importFile(path);
-        this.changeDetector = new ChangeDetector(model);
+        this.changeDetector = new ChangeDetector<>(model, Document::mapModelToJson);
         listenToChanges();
     }
 
@@ -76,36 +80,32 @@ public class Document {
         return mapJsonToModel(json);
     }
 
-    private static Drawing mapJsonToModel(DrawingJson json) throws IOException {
+    private static Drawing mapJsonToModel(DrawingJson json) {
+        Drawing model = makeEmptyModel();
+        fillModelWithJson(model, json);
+        return model;
+    }
 
-        Graph graph = json.getGraph();
+    private static void fillModelWithJson(Drawing model, DrawingJson json) {
+
+        Graph jsonGraph = json.getGraph();
+        Graph newGraph = ModelCopier.deepCopy(jsonGraph, Graph.class);
 
         // resolve references
-        fillLinkOutlets(graph);
-        fillVertices(graph);
+        fillLinkOutlets(newGraph);
+        fillVertices(newGraph);
 
-        // copy lists
-        List<Object> objects = new ArrayList<>(graph.getObjects());
-        List<Link> links = new ArrayList<>(graph.getLinks());
-        List<Completion> completions = new ArrayList<>(graph.getCompletions());
-        List<Quantity> quantities = new ArrayList<>(graph.getQuantities());
-        Map<Object, Position> positions = json.getPositions().keySet().stream().collect(Collectors.toMap(id -> GraphHandler.findGraphElementWithId(graph.getObjects(), id), json.getPositions()::get));
-        Map<Completion, Position> completionPositions = json.getCompletionPositions().keySet().stream().collect(Collectors.toMap(id -> GraphHandler.findGraphElementWithId(graph.getCompletions(), id), json.getCompletionPositions()::get));
-        Map<Quantity, Position> quantityPositions = json.getQuantityPositions().keySet().stream().collect(Collectors.toMap(id -> GraphHandler.findGraphElementWithId(graph.getQuantities(), id), json.getQuantityPositions()::get));
-        Map<Link, Position> linkCenters = json.getLinkCenters().keySet().stream().collect(Collectors.toMap(id -> GraphHandler.findGraphElementWithId(graph.getLinks(), id), json.getLinkCenters()::get));
+        model.setGraph(newGraph);
 
-        return Drawing.builder()
-                .graph(Graph.builder()
-                        .objects(objects)
-                        .links(links)
-                        .completions(completions)
-                        .quantities(quantities)
-                        .build())
-                .positions(positions)
-                .completionPositions(completionPositions)
-                .quantityPositions(quantityPositions)
-                .linkCenters(linkCenters)
-                .build();
+        Map<Object, Position> positions = json.getPositions().keySet().stream().collect(Collectors.toMap(id -> GraphHandler.findGraphElementWithId(newGraph.getObjects(), id), json.getPositions()::get));
+        Map<Completion, Position> completionPositions = json.getCompletionPositions().keySet().stream().collect(Collectors.toMap(id -> GraphHandler.findGraphElementWithId(newGraph.getCompletions(), id), json.getCompletionPositions()::get));
+        Map<Quantity, Position> quantityPositions = json.getQuantityPositions().keySet().stream().collect(Collectors.toMap(id -> GraphHandler.findGraphElementWithId(newGraph.getQuantities(), id), json.getQuantityPositions()::get));
+        Map<Link, Position> linkCenters = json.getLinkCenters().keySet().stream().collect(Collectors.toMap(id -> GraphHandler.findGraphElementWithId(newGraph.getLinks(), id), json.getLinkCenters()::get));
+
+        model.getPositions().putAll(positions);
+        model.getCompletionPositions().putAll(completionPositions);
+        model.getQuantityPositions().putAll(quantityPositions);
+        model.getLinkCenters().putAll(linkCenters);
     }
 
     private static void fillLinkOutlets(Graph graph) {
@@ -133,21 +133,13 @@ public class Document {
     }
 
     private void listenToChanges() {
-        this.previousModels.add(copyModel(model));
+        registerCurrentStateForUndo();
         changeDetector.addListener(this, Document::reactToChange);
     }
 
-    private static Drawing copyModel(Drawing model) {
-        ObjectMapper objectMapper = new ObjectMapper();
-
-        try {
-            DrawingJson jsonContentInput = mapModelToJson(model);
-            String jsonString = objectMapper.writeValueAsString(jsonContentInput);
-            DrawingJson jsonContentOutput = objectMapper.readValue(jsonString, DrawingJson.class);
-            return mapJsonToModel(jsonContentOutput);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+    private void registerCurrentStateForUndo() {
+        DrawingJson currentState = changeDetector.getCurrentState();
+        previousModels.add(currentState);
     }
 
     private void reactToChange() {
@@ -155,8 +147,7 @@ public class Document {
             previousModels.subList(previousModelIndex+1, previousModels.size()).clear();
             previousModelIndex = null;
         }
-        Drawing currentModel = copyModel(model);
-        previousModels.add(currentModel);
+        registerCurrentStateForUndo();
         changeModifiedFlag(true);
     }
 
@@ -185,7 +176,8 @@ public class Document {
         drawingComponent = new DrawingComponent(model, changeDetector);
         drawingComponent.setBounds(0, 0, 500, 600);
         frame.add(drawingComponent, BorderLayout.CENTER);
-        frame.add(new InfoComponent(drawingComponent.getSelection(), drawingComponent.getSelectionChangeDetector(), changeDetector), BorderLayout.EAST);
+        InfoComponent infoComponent = new InfoComponent(drawingComponent.getSelection(), drawingComponent.getSelectionChangeDetector(), changeDetector);
+        frame.add(infoComponent, BorderLayout.EAST);
         frame.setSize(800, 600);
         frame.setJMenuBar(menuBar);
         frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
@@ -279,25 +271,33 @@ public class Document {
             return;
         }
         previousModelIndex -= 1;
-        changeModel(copyModel(previousModels.get(previousModelIndex)));
+        changeModel(previousModels.get(previousModelIndex));
         if (previousModelIndex == 0) {
             changeModifiedFlag(false);
         }
     }
 
-    private void changeModel(Drawing model) {
-        this.model = model;
-        this.changeDetector.reinitModel(model);
-        drawingComponent.changeModel(model);
+    private void changeModel(DrawingJson json) {
+        clearModel(this.model);
+        fillModelWithJson(this.model, json);
+        this.changeDetector.notifyChangeCausedBy(this);
     }
 
+    private void clearModel(Drawing drawing) {
+        drawing.setGraph(null);
+
+        drawing.getPositions().clear();
+        drawing.getCompletionPositions().clear();
+        drawing.getQuantityPositions().clear();
+        drawing.getLinkCenters().clear();
+    }
 
     public void redo() {
         if (previousModelIndex == null) {
             return;
         }
         previousModelIndex += 1;
-        changeModel(copyModel(previousModels.get(previousModelIndex)));
+        changeModel(previousModels.get(previousModelIndex));
         if (previousModelIndex == previousModels.size()-1) {
             previousModelIndex = null;
         }
@@ -308,7 +308,7 @@ public class Document {
         changeModifiedFlag(false);
         previousModelIndex = null;
         previousModels.clear();
-        previousModels.add(copyModel(model));
+        registerCurrentStateForUndo();
 
         if (this.path != null) {
             writeFile();
@@ -337,7 +337,7 @@ public class Document {
 
     private static DrawingJson mapModelToJson(Drawing model) {
         return DrawingJson.builder()
-                .graph(model.getGraph())
+                .graph(ModelCopier.deepCopy(model.getGraph(), Graph.class))
                 .positions(model.getPositions().keySet().stream()
                         .collect(Collectors.toMap(Object::getId,model.getPositions()::get)))
                 .completionPositions(model.getCompletionPositions().keySet().stream()

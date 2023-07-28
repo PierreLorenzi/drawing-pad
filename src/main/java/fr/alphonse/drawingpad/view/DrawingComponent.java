@@ -10,12 +10,11 @@ import fr.alphonse.drawingpad.document.utils.Graduations;
 import fr.alphonse.drawingpad.view.internal.ModelHandler;
 
 import javax.swing.*;
+import javax.swing.Timer;
 import java.awt.*;
 import java.awt.event.*;
-import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -23,13 +22,15 @@ import java.util.stream.Stream;
 
 public class DrawingComponent extends JComponent {
 
-    private Drawing model;
+    private final Drawing model;
 
-    private final ChangeDetector changeDetector;
+    private final ChangeDetector<?,?> changeDetector;
 
     private final List<GraphElement> selectedElements = new ArrayList<>();
 
-    private final ChangeDetector selectionChangeDetector = new ChangeDetector(selectedElements);
+    public static final Function<List<GraphElement>, ?> SELECTION_STATE_FUNCTION = elements -> elements.stream().map(GraphElement::getId).collect(Collectors.toSet());
+
+    private final ChangeDetector<List<GraphElement>,?> selectionChangeDetector = new ChangeDetector<>(selectedElements, SELECTION_STATE_FUNCTION);
 
     private Map<GraphElement, Vector> dragRelativeVectors;
 
@@ -99,11 +100,11 @@ public class DrawingComponent extends JComponent {
 
     private static  final Vector DUPLICATE_SHIFT = new Vector(70, 30);
 
-    public DrawingComponent(Drawing model, ChangeDetector changeDetector) {
+    public DrawingComponent(Drawing model, ChangeDetector<?,?> changeDetector) {
         super();
         this.model = model;
         this.changeDetector = changeDetector;
-        changeDetector.addListener(this, DrawingComponent::repaint);
+        changeDetector.addListener(this, DrawingComponent::reactToModelChange);
         setBackground(Color.WHITE);
         addMouseListener(new MouseListener() {
             @Override
@@ -160,18 +161,33 @@ public class DrawingComponent extends JComponent {
         this.setFocusable(true);
     }
 
-    public void changeModel(Drawing model) {
-        this.model = model;
-        this.changeDetector.reinitModel(model);
-        this.repaint();
-    }
-
     public java.util.List<GraphElement> getSelection() {
         return selectedElements;
     }
 
-    public ChangeDetector getSelectionChangeDetector() {
+    public ChangeDetector<?,?> getSelectionChangeDetector() {
         return selectionChangeDetector;
+    }
+
+    private void reactToModelChange() {
+        // elements of the selection may have disappeared
+        int selectionSizeBeforeFilter = this.selectedElements.size();
+        this.selectedElements.removeIf(element -> !doesElementExistInModel(element, model));
+        if (this.selectedElements.size() != selectionSizeBeforeFilter) {
+            this.selectionChangeDetector.notifyChange();
+        }
+
+        this.repaint();
+    }
+
+    private static boolean doesElementExistInModel(GraphElement element, Drawing model) {
+        Graph graph = model.getGraph();
+        return switch (element) {
+            case Object object -> graph.getObjects().contains(object);
+            case Completion completion -> graph.getCompletions().contains(completion);
+            case Quantity quantity -> graph.getQuantities().contains(quantity);
+            case Link link -> graph.getLinks().contains(link);
+        };
     }
 
     public void delete() {
@@ -186,7 +202,8 @@ public class DrawingComponent extends JComponent {
         this.selectedElements.clear();
         this.selectionChangeDetector.notifyChange();
         lastSelectedElement = null;
-        this.changeDetector.notifyChange();
+        this.changeDetector.notifyChangeCausedBy(this);
+        repaint();
     }
 
     @Override
@@ -442,14 +459,15 @@ public class DrawingComponent extends JComponent {
                 return;
             }
             ModelHandler.addLink(origin, clickedVertex, center, model);
-            changeDetector.notifyChange();
+            changeDetector.notifyChangeCausedBy(this);
             return;
         }
         // if press with command, add object or link
         if ((event.getModifiersEx() & Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()) != 0) {
             if (clickedVertex == null) {
                 ModelHandler.addObject(position, model);
-                changeDetector.notifyChange();
+                changeDetector.notifyChangeCausedBy(this);
+                repaint();
             }
             else {
                 newLinkOrigin = clickedVertex;
@@ -463,7 +481,8 @@ public class DrawingComponent extends JComponent {
             }
             Position newPosition = makePositionFromBase(findVertexPosition(clickedVertex));
             ModelHandler.addCompletion(clickedVertex, newPosition, model);
-            changeDetector.notifyChange();
+            changeDetector.notifyChangeCausedBy(this);
+            repaint();
             return;
         }
         // if press with control, add quantity
@@ -473,7 +492,8 @@ public class DrawingComponent extends JComponent {
             }
             Position newPosition = makePositionFromBase(findVertexPosition(clickedVertex));
             ModelHandler.addQuantity(clickedVertex, newPosition, model);
-            changeDetector.notifyChange();
+            changeDetector.notifyChangeCausedBy(this);
+            repaint();
             return;
         }
         boolean isShiftKeyPressed = (event.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) != 0;
@@ -493,16 +513,20 @@ public class DrawingComponent extends JComponent {
         this.canDrag = !(isShiftKeyPressed && (clickedElement == null || alreadySelected));
         this.hasDragged = false;
         this.hasDraggedObjects = false;
+        boolean selectionDidChange = false;
         if (alreadySelected && isShiftKeyPressed) {
             selectedElements.remove(clickedElement);
-            this.selectionChangeDetector.notifyChange();
+            selectionDidChange = true;
         }
         if (!isShiftKeyPressed && !alreadySelected) {
             DrawingComponent.this.selectedElements.clear();
-            this.selectionChangeDetector.notifyChange();
+            selectionDidChange = true;
         }
         if (clickedElement != null && !alreadySelected) {
             this.selectedElements.add(clickedElement);
+            selectionDidChange = true;
+        }
+        if (selectionDidChange) {
             this.selectionChangeDetector.notifyChange();
         }
         this.dragRelativeVectors = listElementsToDragAmong(this.selectedElements).stream()
@@ -665,7 +689,7 @@ public class DrawingComponent extends JComponent {
             this.draggedCenterRelativePosition = null;
             this.model.getLinkCenters().put(link, newCenter);
             this.repaint();
-            this.changeDetector.notifyChange();
+            this.changeDetector.notifyChangeCausedBy(this);
             return;
         }
         if (selectionRectangleOrigin != null || selectionRectangleDestination != null) {
@@ -684,7 +708,7 @@ public class DrawingComponent extends JComponent {
             this.selectionChangeDetector.notifyChange();
         }
         if (hasDraggedObjects) {
-            changeDetector.notifyChange();
+            changeDetector.notifyChangeCausedBy(this);
         }
     }
 
@@ -850,7 +874,8 @@ public class DrawingComponent extends JComponent {
                 DrawingComponent.this.repaint();
             });
             timer.start();
-            this.changeDetector.notifyChange();
+            this.changeDetector.notifyChangeCausedBy(this);
+            repaint();
         }
     }
 
@@ -890,7 +915,7 @@ public class DrawingComponent extends JComponent {
 
         this.selectedElements.clear();
         this.selectedElements.addAll(newElements);
-        this.changeDetector.notifyChange();
+        this.changeDetector.notifyChangeCausedBy(this);
         this.selectionChangeDetector.notifyChange();
         repaint();
     }

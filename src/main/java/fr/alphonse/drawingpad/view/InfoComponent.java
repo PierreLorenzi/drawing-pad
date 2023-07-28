@@ -1,7 +1,7 @@
 package fr.alphonse.drawingpad.view;
 
-import fr.alphonse.drawingpad.data.model.*;
 import fr.alphonse.drawingpad.data.model.Object;
+import fr.alphonse.drawingpad.data.model.*;
 import fr.alphonse.drawingpad.document.utils.ChangeDetector;
 import fr.alphonse.drawingpad.view.internal.GraduatedValueComponent;
 
@@ -12,7 +12,7 @@ public class InfoComponent extends JPanel {
 
     private final java.util.List<GraphElement> selection;
 
-    private final ChangeDetector modelChangeDetector;
+    private final ChangeDetector<?,?> modelChangeDetector;
 
     private JTextArea multipleSelectionLabel;
 
@@ -54,12 +54,12 @@ public class InfoComponent extends JPanel {
 
     private static final String LINK_SELECTION_CARD = "link";
 
-    public InfoComponent(java.util.List<GraphElement> selection, ChangeDetector changeDetector, ChangeDetector modelChangeDetector) {
+    public InfoComponent(java.util.List<GraphElement> selection, ChangeDetector<?,?> selectionChangeDetector, ChangeDetector<?,?> modelChangeDetector) {
         super();
         this.selection = selection;
         this.modelChangeDetector = modelChangeDetector;
 
-        changeDetector.addListener(this, InfoComponent::reactToSelectionChange);
+        selectionChangeDetector.addListener(this, InfoComponent::reactToSelectionChange);
 
         setLayout(new CardLayout());
         add(makeEmptySelectionView(), EMPTY_SELECTION_CARD);
@@ -99,7 +99,7 @@ public class InfoComponent extends JPanel {
         JTextField nameField = makeNameField(panel);
         nameField.addActionListener(event -> {if (this.selectedObject != null) {
             this.selectedObject.setName(nameField.getText());
-            this.modelChangeDetector.notifyChange();
+            this.modelChangeDetector.notifyChangeCausedBy(InfoComponent.this);
         }});
         this.objectNameField = nameField;
 
@@ -134,7 +134,7 @@ public class InfoComponent extends JPanel {
         JTextField nameField = makeNameField(panel);
         nameField.addActionListener(event -> {if (this.selectedCompletion != null) {
             this.selectedCompletion.setName(nameField.getText());
-            this.modelChangeDetector.notifyChange();
+            this.modelChangeDetector.notifyChangeCausedBy(InfoComponent.this);
         }});
         this.completionNameField = nameField;
 
@@ -144,7 +144,7 @@ public class InfoComponent extends JPanel {
         valueLabel.setForeground(Color.WHITE);
         valueLabel.setHorizontalAlignment(SwingConstants.CENTER);
         panel.add(valueLabel);
-        completionValueComponent = new GraduatedValueComponent();
+        completionValueComponent = new GraduatedValueComponent(() -> modelChangeDetector.notifyChangeCausedBy(InfoComponent.this));
         panel.add(completionValueComponent);
 
         // local value
@@ -153,7 +153,7 @@ public class InfoComponent extends JPanel {
         localValueLabel.setForeground(Color.WHITE);
         localValueLabel.setHorizontalAlignment(SwingConstants.CENTER);
         panel.add(localValueLabel);
-        completionLocalValueComponent = new GraduatedValueComponent();
+        completionLocalValueComponent = new GraduatedValueComponent(() -> modelChangeDetector.notifyChangeCausedBy(InfoComponent.this));
         panel.add(completionLocalValueComponent);
 
         return panel;
@@ -164,7 +164,7 @@ public class InfoComponent extends JPanel {
         JTextField nameField = makeNameField(panel);
         nameField.addActionListener(event -> {if (this.selectedQuantity != null) {
             this.selectedQuantity.setName(nameField.getText());
-            this.modelChangeDetector.notifyChange();
+            this.modelChangeDetector.notifyChangeCausedBy(InfoComponent.this);
         }});
         this.quantityNameField = nameField;
 
@@ -174,7 +174,7 @@ public class InfoComponent extends JPanel {
         valueLabel.setForeground(Color.WHITE);
         valueLabel.setHorizontalAlignment(SwingConstants.CENTER);
         panel.add(valueLabel);
-        quantityValueComponent = new GraduatedValueComponent();
+        quantityValueComponent = new GraduatedValueComponent(() -> modelChangeDetector.notifyChangeCausedBy(InfoComponent.this));
         panel.add(quantityValueComponent);
 
         // local value
@@ -183,7 +183,7 @@ public class InfoComponent extends JPanel {
         localValueLabel.setForeground(Color.WHITE);
         localValueLabel.setHorizontalAlignment(SwingConstants.CENTER);
         panel.add(localValueLabel);
-        quantityLocalValueComponent = new GraduatedValueComponent();
+        quantityLocalValueComponent = new GraduatedValueComponent(() -> modelChangeDetector.notifyChangeCausedBy(InfoComponent.this));
         panel.add(quantityLocalValueComponent);
 
         return panel;
@@ -195,7 +195,7 @@ public class InfoComponent extends JPanel {
         JTextField nameField = makeNameField(panel);
         nameField.addActionListener(event -> {if (this.selectedLink != null) {
             this.selectedLink.setName(nameField.getText());
-            this.modelChangeDetector.notifyChange();
+            this.modelChangeDetector.notifyChangeCausedBy(InfoComponent.this);
         }});
         this.linkNameField = nameField;
 
@@ -205,7 +205,7 @@ public class InfoComponent extends JPanel {
         factorLabel.setForeground(Color.WHITE);
         factorLabel.setHorizontalAlignment(SwingConstants.CENTER);
         panel.add(factorLabel);
-        linkFactorComponent = new GraduatedValueComponent();
+        linkFactorComponent = new GraduatedValueComponent(() -> modelChangeDetector.notifyChangeCausedBy(InfoComponent.this));
         panel.add(linkFactorComponent);
 
         panel.add(Box.createVerticalGlue());

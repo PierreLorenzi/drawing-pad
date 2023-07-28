@@ -11,6 +11,8 @@ import java.util.stream.Stream;
 
 public class GraduatedValueComponent extends JPanel {
 
+    private final Runnable changeCallback;
+
     private final JComboBox<String> comboBox;
 
     private final JTextField field;
@@ -29,8 +31,10 @@ public class GraduatedValueComponent extends JPanel {
             Graduation.INFINITY, "∞"
     );
 
-    public GraduatedValueComponent() {
+    public GraduatedValueComponent(Runnable changeCallback) {
         super();
+
+        this.changeCallback = changeCallback;
 
         setBackground(null);
         setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
@@ -66,6 +70,7 @@ public class GraduatedValueComponent extends JPanel {
         value.setGraduation(index == 0 ? null : Graduation.values()[index-1]);
         value.setNumberInGraduation(null);
         updateField();
+        changeCallback.run();
     }
 
     private void reactToNumberChange() {
@@ -83,6 +88,7 @@ public class GraduatedValueComponent extends JPanel {
             return;
         }
         this.value.setNumberInGraduation(doubleValue);
+        changeCallback.run();
     }
 
     private static Double parseDouble(String s) {
