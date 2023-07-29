@@ -12,7 +12,6 @@ import lombok.experimental.UtilityClass;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @UtilityClass
@@ -177,10 +176,10 @@ public class ModelHandler {
         drawing.getLinkCenters().remove(link);
     }
 
-    public static List<GraphElement> listElementsInModel(Drawing model) {
+    public static Stream<GraphElement> streamElementsInModel(Drawing model) {
         Graph graph = model.getGraph();
         return Stream.of(graph.getObjects(), graph.getCompletions(), graph.getQuantities(), graph.getLinks())
                 .flatMap(List::stream)
-                .collect(Collectors.toCollection(ArrayList<GraphElement>::new)); // the initial capacity is just to avoid IntelliJ to warn
+                .map(GraphElement.class::cast);
     }
 }

@@ -3,19 +3,18 @@ package fr.alphonse.drawingpad.view;
 import fr.alphonse.drawingpad.data.Drawing;
 import fr.alphonse.drawingpad.data.geometry.Position;
 import fr.alphonse.drawingpad.data.geometry.Vector;
-import fr.alphonse.drawingpad.data.model.*;
 import fr.alphonse.drawingpad.data.model.Object;
+import fr.alphonse.drawingpad.data.model.*;
 import fr.alphonse.drawingpad.document.utils.ChangeDetector;
 import fr.alphonse.drawingpad.document.utils.Graduations;
 import fr.alphonse.drawingpad.document.utils.GraphHandler;
 import fr.alphonse.drawingpad.view.internal.ModelHandler;
 
 import javax.swing.*;
-import javax.swing.Timer;
 import java.awt.*;
 import java.awt.event.*;
-import java.util.*;
 import java.util.List;
+import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -41,7 +40,7 @@ public class DrawingComponent extends JComponent {
 
     private boolean hasDragged = false;
 
-    private boolean hasDraggedObjects = false;
+    private boolean hasDraggedElements = false;
 
     private GraphElement lastSelectedElement = null;
 
@@ -520,7 +519,7 @@ public class DrawingComponent extends JComponent {
         boolean alreadySelected = clickedElement != null && selectedElements.contains(clickedElement);
         this.canDrag = !(isShiftKeyPressed && (clickedElement == null || alreadySelected));
         this.hasDragged = false;
-        this.hasDraggedObjects = false;
+        this.hasDraggedElements = false;
         boolean selectionDidChange = false;
         if (alreadySelected && isShiftKeyPressed) {
             selectedElements.remove(clickedElement);
@@ -715,7 +714,7 @@ public class DrawingComponent extends JComponent {
             this.repaint();
             this.selectionChangeDetector.notifyChange();
         }
-        if (hasDraggedObjects) {
+        if (hasDraggedElements) {
             changeDetector.notifyChangeCausedBy(this);
         }
     }
@@ -747,25 +746,13 @@ public class DrawingComponent extends JComponent {
             return;
         }
         this.hasDragged = true;
-        hasDraggedObjects = false;
+        hasDraggedElements = false;
         for (GraphElement selectedElement: dragRelativeVectors.keySet()) {
             changeElementPosition(selectedElement, position.translate(this.dragRelativeVectors.get(selectedElement)));
-            hasDraggedObjects = true;
+            hasDraggedElements = true;
         }
-        if (hasDraggedObjects) {
-            List<Integer> nearbyGuidesX = findNearbyGuideDeltas(Position::x);
-            List<Integer> nearbyGuidesY = findNearbyGuideDeltas(Position::y);
-            if (Math.max(nearbyGuidesX.size(), nearbyGuidesY.size()) >= 1) {
-                int deltaX = nearbyGuidesX.isEmpty() ? 0 : nearbyGuidesX.get(0);
-                int deltaY = nearbyGuidesY.isEmpty() ? 0 : nearbyGuidesY.get(0);
-                Vector magnetismVector = new Vector(deltaX, deltaY);
-                for (GraphElement selectedElement: selectedElements) {
-                    if (selectedElement instanceof Object object) {
-                        model.getPositions().put(object, model.getPositions().get(object).translate(magnetismVector));
-                    }
-                }
-            }
-            fillGuides();
+        if (hasDraggedElements) {
+            updateMagneticGuides();
             this.repaint();
         }
     }
@@ -806,45 +793,67 @@ public class DrawingComponent extends JComponent {
         } while (!completionsToAdd.isEmpty() || !quantitiesToAdd.isEmpty() || !linksToAdd.isEmpty());
     }
 
-    private List<Integer> findNearbyGuideDeltas(Function<Position, Integer> coordinate) {
-        List<Position> selectedPositions = selectedElements.stream()
-                .filter(element -> element instanceof Object)
-                .map(element -> (Object)element)
-                .map(model.getPositions()::get)
+    private void updateMagneticGuides() {
+        this.clearGuides();
+        List<Position> draggedPositions = dragRelativeVectors.keySet().stream()
+                .filter(element -> !(element instanceof Link))
+                .map(this::findElementPosition)
                 .toList();
-        return this.model.getGraph().getObjects().stream()
-                .filter(Predicate.not(selectedElements::contains))
-                .map(model.getPositions()::get)
-                .map(coordinate)
-                .flatMap(value -> selectedPositions.stream().map(position -> value - coordinate.apply(position)))
-                .filter(delta -> Math.abs(delta) <= GUIDE_MAGNETISM_RADIUS)
-                .distinct()
-                .sorted()
+        List<Position> otherPositions = ModelHandler.streamElementsInModel(model)
+                .filter(element -> !(element instanceof Link))
+                .filter(element -> dragRelativeVectors.get(element) == null)
+                .map(this::findElementPosition)
                 .toList();
+        Integer nearbyGuideDeltaX = findPossibleGuideAndComputeDelta(draggedPositions, otherPositions, Position::x);
+        Integer nearbyGuideDeltaY = findPossibleGuideAndComputeDelta(draggedPositions, otherPositions, Position::y);
+        if (nearbyGuideDeltaX == null && nearbyGuideDeltaY == null) {
+            return;
+        }
+        int deltaX = nearbyGuideDeltaX == null ? 0 : nearbyGuideDeltaX;
+        int deltaY = nearbyGuideDeltaY == null ? 0 : nearbyGuideDeltaY;
+        Vector shift = new Vector(deltaX, deltaY);
+        fillGuides(draggedPositions, shift, otherPositions);
+        applyMagneticShiftToSelectedElements(shift);
     }
 
-    private void fillGuides() {
-        List<Position> selectedPositions = selectedElements.stream()
-                .filter(element -> element instanceof Object)
-                .map(element -> (Object)element)
-                .map(model.getPositions()::get)
-                .toList();
-        this.guidesX.clear();
-        this.guidesX.addAll(this.model.getGraph().getObjects().stream()
-                .filter(Predicate.not(selectedElements::contains))
-                .map(model.getPositions()::get)
+    private Integer findPossibleGuideAndComputeDelta(List<Position> draggedPositions, List<Position> otherPositions, Function<Position, Integer> coordinate) {
+        return draggedPositions.stream()
+                .map(draggedPosition -> findSinglePossibleGuideAndComputeDelta(draggedPosition, otherPositions, coordinate))
+                .filter(Predicate.not(Objects::isNull))
+                .min(Comparator.comparing(Math::abs))
+                .orElse(null);
+    }
+
+    private Integer findSinglePossibleGuideAndComputeDelta(Position draggedPosition, List<Position> otherPositions, Function<Position, Integer> coordinate) {
+
+        Integer draggedCoordinate = coordinate.apply(draggedPosition);
+
+        return otherPositions.stream()
+                .map(position -> coordinate.apply(position) - draggedCoordinate)
+                .filter(delta -> Math.abs(delta) <= GUIDE_MAGNETISM_RADIUS)
+                .min(Comparator.comparing(Math::abs))
+                .orElse(null);
+    }
+
+    private void fillGuides(List<Position> draggedPositions, Vector draggedShift, List<Position> otherPositions) {
+        this.guidesX.addAll(otherPositions.stream()
                 .map(Position::x)
-                .filter(x -> selectedPositions.stream().anyMatch(position -> position.x() == x))
+                .filter(x -> draggedPositions.stream().anyMatch(position -> position.x() + draggedShift.x() == x))
                 .distinct()
                 .toList());
-        this.guidesY.clear();
-        this.guidesY.addAll(this.model.getGraph().getObjects().stream()
-                .filter(Predicate.not(selectedElements::contains))
-                .map(model.getPositions()::get)
+        this.guidesY.addAll(otherPositions.stream()
                 .map(Position::y)
-                .filter(y -> selectedPositions.stream().anyMatch(position -> position.y() == y))
+                .filter(y -> draggedPositions.stream().anyMatch(position -> position.y() + draggedShift.y() == y))
                 .distinct()
                 .toList());
+    }
+
+    private void applyMagneticShiftToSelectedElements(Vector shift) {
+        for (GraphElement selectedElement: selectedElements) {
+            if (!(selectedElement instanceof Link)) {
+                changeElementPosition(selectedElement, findElementPosition(selectedElement).translate(shift));
+            }
+        }
     }
 
     private void clearGuides() {
@@ -878,12 +887,6 @@ public class DrawingComponent extends JComponent {
             }
         }
         if (needsRefresh) {
-            fillGuides();
-            Timer timer = new Timer(300, action -> {
-                DrawingComponent.this.clearGuides();
-                DrawingComponent.this.repaint();
-            });
-            timer.start();
             this.changeDetector.notifyChangeCausedBy(this);
             repaint();
         }
@@ -910,7 +913,8 @@ public class DrawingComponent extends JComponent {
 
     public void paste(Drawing drawing) {
         Drawing pastedModel = GraphHandler.addModelToModel(drawing, this.model);
-        List<GraphElement> newElements = ModelHandler.listElementsInModel(pastedModel);
+        List<GraphElement> newElements = ModelHandler.streamElementsInModel(pastedModel)
+                .toList();
 
         // shift the new elements
         int shiftCount = computeShiftCount(drawing);
