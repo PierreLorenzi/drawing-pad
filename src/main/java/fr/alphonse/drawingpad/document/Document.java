@@ -3,6 +3,7 @@ package fr.alphonse.drawingpad.document;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import fr.alphonse.drawingpad.data.Drawing;
 import fr.alphonse.drawingpad.data.DrawingJson;
+import fr.alphonse.drawingpad.data.model.GraphElement;
 import fr.alphonse.drawingpad.document.utils.ChangeDetector;
 import fr.alphonse.drawingpad.document.utils.DocumentUtils;
 import fr.alphonse.drawingpad.document.utils.GraphHandler;
@@ -185,8 +186,22 @@ public class Document {
         this.drawingComponent.selectAll();
     }
 
-    public void duplicate() {
-        this.drawingComponent.duplicate();
+    public Drawing copy() {
+        List<GraphElement> selection = drawingComponent.getSelection();
+        if (selection.isEmpty()) {
+            return null;
+        }
+        Drawing copiedModel = GraphHandler.extractModelWithElements(model, selection);
+        if (copiedModel == null) {
+            // the user has selected elements but not their dependencies, so warn
+            Toolkit.getDefaultToolkit().beep();
+            return null;
+        }
+        return copiedModel;
+    }
+
+    public void paste(Drawing clipboard) {
+        this.drawingComponent.paste(clipboard);
     }
 
     public void undo() {

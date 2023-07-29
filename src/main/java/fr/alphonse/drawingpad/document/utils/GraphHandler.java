@@ -121,6 +121,9 @@ public class GraphHandler {
     }
 
     public static Drawing extractModelWithElements(Drawing model, List<GraphElement> elements) {
+        if (areThereElementsWithoutDependencies(elements)) {
+            return null;
+        }
         Graph graph = model.getGraph();
         return Drawing.builder()
                 .graph(Graph.builder()
@@ -135,6 +138,15 @@ public class GraphHandler {
                 .linkCenters(model.getLinkCenters().keySet().stream().filter(elements::contains).collect(Collectors.toMap(Function.identity(), model.getLinkCenters()::get)))
                 .note("")
                 .build();
+    }
+
+    private boolean areThereElementsWithoutDependencies(List<GraphElement> elements) {
+        return elements.stream().anyMatch(element -> switch (element) {
+            case Object ignored -> false;
+            case Completion completion -> !elements.contains(completion.getBase().getElement());
+            case Quantity quantity -> !elements.contains(quantity.getBase().getElement());
+            case Link link -> !elements.contains(link.getOrigin().getElement()) || !elements.contains(link.getDestination().getElement());
+        });
     }
 
     public static Drawing addModelToModel(Drawing modelToAdd, Drawing model) {

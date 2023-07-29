@@ -7,6 +7,7 @@ import fr.alphonse.drawingpad.data.model.*;
 import fr.alphonse.drawingpad.data.model.Object;
 import fr.alphonse.drawingpad.document.utils.ChangeDetector;
 import fr.alphonse.drawingpad.document.utils.Graduations;
+import fr.alphonse.drawingpad.document.utils.GraphHandler;
 import fr.alphonse.drawingpad.view.internal.ModelHandler;
 
 import javax.swing.*;
@@ -60,6 +61,9 @@ public class DrawingComponent extends JComponent {
 
     private final List<Integer> guidesY = new ArrayList<>();
 
+    private Drawing lastPastedModel;
+
+    private int lastPastedCount = 0;
 
     private static final int OBJECT_RECTANGLE_RADIUS = 8;
 
@@ -101,7 +105,7 @@ public class DrawingComponent extends JComponent {
 
     private static final int CIRCLE_RADIUS = 6;
 
-    private static  final Vector DUPLICATE_SHIFT = new Vector(70, 30);
+    private static  final Vector PASTE_SHIFT = new Vector(70, 30);
 
     public DrawingComponent(Drawing model, ChangeDetector<?,?> changeDetector) {
         super();
@@ -904,19 +908,19 @@ public class DrawingComponent extends JComponent {
         repaint();
     }
 
-    public void duplicate() {
-        if (this.selectedElements.isEmpty()) {
-            return;
-        }
-        List<GraphElement> newElements = ModelHandler.copyGraph(this.selectedElements, this.model);
+    public void paste(Drawing drawing) {
+        Drawing pastedModel = GraphHandler.addModelToModel(drawing, this.model);
+        List<GraphElement> newElements = ModelHandler.listElementsInModel(pastedModel);
 
         // shift the new elements
+        int shiftCount = computeShiftCount(drawing);
+        Vector shift = PASTE_SHIFT.multiply(shiftCount);
         for (GraphElement newElement: newElements) {
             Position position = findElementPosition(newElement);
             if (position == null) {
                 continue;
             }
-            changeElementPosition(newElement, position.translate(DUPLICATE_SHIFT));
+            changeElementPosition(newElement, position.translate(shift));
         }
 
         this.selectedElements.clear();
@@ -924,5 +928,16 @@ public class DrawingComponent extends JComponent {
         this.changeDetector.notifyChangeCausedBy(this);
         this.selectionChangeDetector.notifyChange();
         repaint();
+    }
+
+    private int computeShiftCount(Drawing pastedModel) {
+        if (pastedModel != lastPastedModel) {
+            lastPastedModel = pastedModel;
+            lastPastedCount = 1;
+            return lastPastedCount;
+        }
+        lastPastedCount += 1;
+        return lastPastedCount;
+
     }
 }

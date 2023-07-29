@@ -1,5 +1,6 @@
 package fr.alphonse.drawingpad;
 
+import fr.alphonse.drawingpad.data.Drawing;
 import fr.alphonse.drawingpad.document.Document;
 import fr.alphonse.drawingpad.document.utils.DocumentUtils;
 
@@ -22,6 +23,8 @@ public class DrawingPadApplication {
     private static final List<SoftReference<JMenu>> recentFileMenus = new ArrayList<>();
 
     private static JFrame ghostFrame = null;
+
+    private static Drawing clipboard;
 
     private record DocumentRecord(Document document, Path path) {}
 
@@ -100,17 +103,37 @@ public class DrawingPadApplication {
 
         editMenu.addSeparator();
 
+        var copyMenuItem = new JMenuItem("Copy");
+        copyMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
+        copyMenuItem.addActionListener(event -> copy(document) );
+        editMenu.add(copyMenuItem);
+
+        var pasteMenuItem = new JMenuItem("Paste");
+        pasteMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_V, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
+        pasteMenuItem.addActionListener(event -> paste(document) );
+        editMenu.add(pasteMenuItem);
+
         var deleteMenuItem = new JMenuItem("Delete");
         deleteMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0));
         deleteMenuItem.addActionListener(event -> document.delete());
         editMenu.add(deleteMenuItem);
 
-        var duplicateMenuItem = new JMenuItem("Duplicate");
-        duplicateMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_D, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
-        duplicateMenuItem.addActionListener(event -> document.duplicate());
-        editMenu.add(duplicateMenuItem);
-
         return mb;
+    }
+
+    private static void copy(Document document) {
+        Drawing copy = document.copy();
+        if (copy == null) {
+            return;
+        }
+        clipboard = copy;
+    }
+
+    private static void paste(Document document) {
+        if (clipboard == null) {
+            return;
+        }
+        document.paste(clipboard);
     }
 
     private static void openDocument() {

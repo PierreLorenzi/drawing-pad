@@ -177,11 +177,9 @@ public class ModelHandler {
         drawing.getLinkCenters().remove(link);
     }
 
-    public static List<GraphElement> copyGraph(List<GraphElement> elements, Drawing drawing) {
-        Drawing extraction = GraphHandler.extractModelWithElements(drawing, elements);
-        Drawing newModel = GraphHandler.addModelToModel(extraction, drawing);
-        Graph newGraph = newModel.getGraph();
-        return Stream.of(newGraph.getObjects(), newGraph.getCompletions(), newGraph.getQuantities(), newGraph.getLinks())
+    public static List<GraphElement> listElementsInModel(Drawing model) {
+        Graph graph = model.getGraph();
+        return Stream.of(graph.getObjects(), graph.getCompletions(), graph.getQuantities(), graph.getLinks())
                 .flatMap(List::stream)
                 .collect(Collectors.toCollection(ArrayList<GraphElement>::new)); // the initial capacity is just to avoid IntelliJ to warn
     }
