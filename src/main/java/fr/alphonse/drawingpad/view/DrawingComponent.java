@@ -941,10 +941,10 @@ public class DrawingComponent extends JComponent {
         int shiftCount = computeShiftCount(drawing);
         Vector shift = PASTE_SHIFT.multiply(shiftCount);
         for (GraphElement newElement: newElements) {
-            Position position = findElementPosition(newElement);
-            if (position == null) {
+            if (newElement instanceof Link link && model.getLinkCenters().get(link) == null) {
                 continue;
             }
+            Position position = findElementPosition(newElement);
             changeElementPosition(newElement, position.translate(shift));
         }
 
