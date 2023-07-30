@@ -9,7 +9,6 @@ import fr.alphonse.drawingpad.data.model.reference.LinkDirection;
 
 import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.Function;
 
 public class GeometryManager {
@@ -21,7 +20,7 @@ public class GeometryManager {
     public static final int CIRCLE_RADIUS = 6;
 
     // the element types in the order they are displayed
-    public static final List<Class<? extends GraphElement>> DISPLAYED_ELEMENT_TYPES = List.of(Completion.class, Quantity.class, Object.class, Link.class);
+    public static final List<Class<? extends GraphElement>> DISPLAYED_ELEMENT_TYPES = List.of(Link.class, Completion.class, Quantity.class, Object.class);
 
     public GeometryManager(Drawing model) {
         this.model = model;
@@ -136,11 +135,15 @@ public class GeometryManager {
     }
 
     public GraphElement findElementAtPosition(Position position) {
-        return DISPLAYED_ELEMENT_TYPES.stream()
-                .map(type -> findElementOfTypeAtPosition(position, type))
-                .filter(Objects::nonNull)
-                .findFirst()
-                .orElse(null);
+        // we look for an element in the reverse orrder they are drawn
+        for (int i=DISPLAYED_ELEMENT_TYPES.size()-1 ; i >= 0 ; i--) {
+            Class<? extends GraphElement> elementType = DISPLAYED_ELEMENT_TYPES.get(i);
+            GraphElement element = findElementOfTypeAtPosition(position, elementType);
+            if (element != null) {
+                return element;
+            }
+        }
+        return null;
     }
 
     public GraphElement findElementOfTypeAtPosition(Position position, Class<? extends GraphElement> type) {

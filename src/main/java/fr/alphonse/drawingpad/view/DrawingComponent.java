@@ -696,7 +696,7 @@ public class DrawingComponent extends JComponent {
         int deltaY = nearbyGuideDeltaY == null ? 0 : nearbyGuideDeltaY;
         Vector shift = new Vector(deltaX, deltaY);
         fillGuides(draggedPositions, shift, otherPositions);
-        applyMagneticShiftToSelectedElements(shift);
+        applyMagneticShiftToDraggedElements(shift);
     }
 
     private Integer findPossibleGuideAndComputeDelta(List<Position> draggedPositions, List<Position> otherPositions, Function<Position, Integer> coordinate) {
@@ -731,8 +731,8 @@ public class DrawingComponent extends JComponent {
                 .toList());
     }
 
-    private void applyMagneticShiftToSelectedElements(Vector shift) {
-        for (GraphElement selectedElement: selectedElements) {
+    private void applyMagneticShiftToDraggedElements(Vector shift) {
+        for (GraphElement selectedElement: dragRelativeVectors.keySet()) {
             if (!(selectedElement instanceof Link link && model.getPositions().get(link) == null)) {
                 model.getPositions().put(selectedElement, geometryManager.findElementPosition(selectedElement).translate(shift));
             }

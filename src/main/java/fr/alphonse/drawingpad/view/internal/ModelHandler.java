@@ -89,6 +89,7 @@ public class ModelHandler {
         drawing.getElements().removeAll(dependentElements);
         for (GraphElement dependentElement: dependentElements) {
             drawing.getPositions().remove(dependentElement);
+            drawing.getNamePositions().remove(dependentElement);
         }
     }
 
