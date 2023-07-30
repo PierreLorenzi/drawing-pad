@@ -1,13 +1,13 @@
 package fr.alphonse.drawingpad.data;
 
 import fr.alphonse.drawingpad.data.geometry.Position;
-import fr.alphonse.drawingpad.data.model.Graph;
 import fr.alphonse.drawingpad.data.model.GraphElement;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
 import java.util.Map;
 
 @Data
@@ -16,7 +16,7 @@ import java.util.Map;
 @AllArgsConstructor
 public class Drawing {
 
-    private Graph graph;
+    private List<GraphElement> elements;
 
     private Map<GraphElement, Position> positions;
 

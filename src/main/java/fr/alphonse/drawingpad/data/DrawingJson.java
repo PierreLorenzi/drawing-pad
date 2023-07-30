@@ -1,14 +1,14 @@
 package fr.alphonse.drawingpad.data;
 
 import fr.alphonse.drawingpad.data.geometry.Position;
-import fr.alphonse.drawingpad.data.model.Graph;
-import fr.alphonse.drawingpad.data.model.reference.Reference;
+import fr.alphonse.drawingpad.data.model.GraphElement;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.jackson.Jacksonized;
 
+import java.util.List;
 import java.util.Map;
 
 @Data
@@ -18,9 +18,9 @@ import java.util.Map;
 @Jacksonized
 public class DrawingJson {
 
-    private Graph graph;
+    private List<GraphElement> elements;
 
-    private Map<Reference, Position> positions;
+    private Map<Integer, Position> positions;
 
     private String note;
 }

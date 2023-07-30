@@ -5,8 +5,6 @@ import fr.alphonse.drawingpad.data.DrawingJson;
 import fr.alphonse.drawingpad.data.geometry.Position;
 import fr.alphonse.drawingpad.data.model.Object;
 import fr.alphonse.drawingpad.data.model.*;
-import fr.alphonse.drawingpad.data.model.reference.Reference;
-import fr.alphonse.drawingpad.data.model.reference.ReferenceType;
 import lombok.experimental.UtilityClass;
 
 import java.util.ArrayList;
@@ -21,12 +19,7 @@ public class GraphHandler {
 
     public static Drawing makeEmptyModel() {
         return Drawing.builder()
-                .graph(Graph.builder()
-                        .objects(new ArrayList<>())
-                        .completions(new ArrayList<>())
-                        .quantities(new ArrayList<>())
-                        .links(new ArrayList<>())
-                        .build())
+                .elements(new ArrayList<>())
                 .positions(new HashMap<>())
                 .note("")
                 .build();
@@ -40,32 +33,42 @@ public class GraphHandler {
 
     public static void fillModelWithJson(Drawing model, DrawingJson json) {
 
-        Graph jsonGraph = json.getGraph();
-        Graph newGraph = ModelStateManager.deepCopy(jsonGraph, Graph.class);
+        List<GraphElement> jsonElements = json.getElements();
+        List<GraphElement> newElements = ModelStateManager.deepCopy(jsonElements, GraphElement.class);
 
         // resolve references
-        fillVertices(newGraph);
+        fillVertices(newElements);
 
-        model.setGraph(newGraph);
+        model.setElements(newElements);
 
-        Map<GraphElement, Position> positions = mapKeys(json.getPositions(), reference -> findElementAtReference(reference, newGraph));
+        Map<GraphElement, Position> positions = mapKeys(json.getPositions(), id -> findElementWithId(id, newElements));
         model.getPositions().putAll(positions);
 
         model.setNote(json.getNote());
     }
 
-    private static void fillVertices(Graph graph) {
-        for (Link link : graph.getLinks()) {
-            link.setOrigin(GraphHandler.findElementAtReference(link.getOriginReference(), graph));
-            link.setDestination(GraphHandler.findElementAtReference(link.getDestinationReference(), graph));
-        }
-        for (Completion completion: graph.getCompletions()) {
-            completion.setBase(GraphHandler.findElementAtReference(completion.getBaseReference(), graph));
-        }
-        for (Quantity quantity: graph.getQuantities()) {
-            quantity.setBase(GraphHandler.findElementAtReference(quantity.getBaseReference(), graph));
+    private static void fillVertices(List<GraphElement> elements) {
+        for (GraphElement element: elements) {
+            switch (element) {
+                case Object ignored -> doNothing();
+                case Completion completion -> completion.setBase(GraphHandler.findElementAtReference(completion.getBaseReference(), elements));
+                case Quantity quantity -> quantity.setBase(GraphHandler.findElementAtReference(quantity.getBaseReference(), elements));
+                case Link link -> {
+                    link.setOrigin(GraphHandler.findElementAtReference(link.getOriginReference(), elements));
+                    link.setDestination(GraphHandler.findElementAtReference(link.getDestinationReference(), elements));
+                }
+            }
         }
     }
+
+    private static GraphElement findElementWithId(int id, List<GraphElement> elements) {
+        return elements.stream()
+                .filter(element -> element.getId() == id)
+                .findFirst()
+                .orElseThrow();
+    }
+
+    public static void doNothing() {}
 
     private static <K1, K2, V> Map<K2,V> mapKeys(Map<K1,V> map, Function<K1, K2> function) {
         return map.keySet().stream()
@@ -74,19 +77,19 @@ public class GraphHandler {
 
     public static DrawingJson mapModelToJson(Drawing model) {
         return DrawingJson.builder()
-                .graph(ModelStateManager.deepCopy(model.getGraph(), Graph.class))
-                .positions(mapKeys(model.getPositions(), GraphHandler::makeReferenceForElement))
+                .elements(ModelStateManager.deepCopy(model.getElements(), GraphElement.class))
+                .positions(mapKeys(model.getPositions(), GraphElement::getId))
                 .note(model.getNote())
                 .build();
     }
 
-    public static GraphElement findElementAtReference(Reference reference, Graph graph) {
+    public static GraphElement findElementAtReference(Reference reference, List<GraphElement> elements) {
         final int id = reference.id();
         return switch (reference.type()) {
-            case OBJECT -> findGraphElementWithId(graph.getObjects(), id);
-            case COMPLETION -> findGraphElementWithId(graph.getCompletions(), id);
-            case QUANTITY -> findGraphElementWithId(graph.getQuantities(), id);
-            case LINK -> findGraphElementWithId(graph.getLinks(), id);
+            case OBJECT -> elements.stream().filter(element -> element instanceof Object && element.getId() == id).findFirst().orElseThrow();
+            case COMPLETION -> elements.stream().filter(element -> element instanceof Completion && element.getId() == id).findFirst().orElseThrow();
+            case QUANTITY -> elements.stream().filter(element -> element instanceof Quantity && element.getId() == id).findFirst().orElseThrow();
+            case LINK -> elements.stream().filter(element -> element instanceof Link && element.getId() == id).findFirst().orElseThrow();
         };
     }
 
@@ -99,24 +102,12 @@ public class GraphHandler {
         };
     }
 
-    public static <T extends GraphElement> T findGraphElementWithId(List<T> vertices, int id) {
-        return vertices.stream()
-                .filter(element -> element.getId() == id)
-                .findFirst().orElseThrow();
-    }
-
     public static Drawing extractModelWithElements(Drawing model, List<GraphElement> elements) {
         if (areThereElementsWithoutDependencies(elements)) {
             return null;
         }
-        Graph graph = model.getGraph();
         return Drawing.builder()
-                .graph(Graph.builder()
-                        .objects(graph.getObjects().stream().filter(elements::contains).toList())
-                        .completions(graph.getCompletions().stream().filter(elements::contains).toList())
-                        .quantities(graph.getQuantities().stream().filter(elements::contains).toList())
-                        .links(graph.getLinks().stream().filter(elements::contains).toList())
-                        .build())
+                .elements(new ArrayList<>(elements))
                 .positions(model.getPositions().keySet().stream().filter(elements::contains).collect(Collectors.toMap(Function.identity(), model.getPositions()::get)))
                 .note("")
                 .build();
@@ -134,20 +125,14 @@ public class GraphHandler {
     public static Drawing addModelToModel(Drawing modelToAdd, Drawing model) {
         Drawing newModelToAdd = copyModel(modelToAdd);
 
-        Graph graph = model.getGraph();
-        Graph graphToAdd = newModelToAdd.getGraph();
+        List<GraphElement> elements = model.getElements();
+        List<GraphElement> elementsToAdd = newModelToAdd.getElements();
 
-        changeElementsIdsSoTheyCanBeAdded(graph.getObjects(), graphToAdd.getObjects());
-        changeElementsIdsSoTheyCanBeAdded(graph.getCompletions(), graphToAdd.getCompletions());
-        changeElementsIdsSoTheyCanBeAdded(graph.getQuantities(), graphToAdd.getQuantities());
-        changeElementsIdsSoTheyCanBeAdded(graph.getLinks(), graphToAdd.getLinks());
+        changeElementsIdsSoTheyCanBeAdded(elements, elementsToAdd);
 
-        correctVertexReferences(graphToAdd);
+        correctVertexReferences(elementsToAdd);
 
-        graph.getObjects().addAll(graphToAdd.getObjects());
-        graph.getCompletions().addAll(graphToAdd.getCompletions());
-        graph.getQuantities().addAll(graphToAdd.getQuantities());
-        graph.getLinks().addAll(graphToAdd.getLinks());
+        elements.addAll(elementsToAdd);
 
         model.getPositions().putAll(newModelToAdd.getPositions());
 
@@ -175,16 +160,23 @@ public class GraphHandler {
         return 1 + maxId;
     }
 
-    private static void correctVertexReferences(Graph graph) {
-        for (Link link : graph.getLinks()) {
-            link.setOriginReference(new Reference(link.getOriginReference().type(), link.getOrigin().getId()));
-            link.setDestinationReference(new Reference(link.getDestinationReference().type(), link.getDestination().getId()));
+    private static void correctVertexReferences(List<GraphElement> elements) {
+        for (GraphElement element: elements) {
+            switch (element) {
+                case Object ignored -> doNothing();
+                case Completion completion -> completion.setBaseReference(new Reference(completion.getBaseReference().type(), completion.getBase().getId()));
+                case Quantity quantity -> quantity.setBaseReference(new Reference(quantity.getBaseReference().type(), quantity.getBase().getId()));
+                case Link link -> {
+                    link.setOriginReference(new Reference(link.getOriginReference().type(), link.getOrigin().getId()));
+                    link.setDestinationReference(new Reference(link.getDestinationReference().type(), link.getDestination().getId()));
+                }
+            }
         }
-        for (Completion completion: graph.getCompletions()) {
-            completion.setBaseReference(new Reference(completion.getBaseReference().type(), completion.getBase().getId()));
-        }
-        for (Quantity quantity: graph.getQuantities()) {
-            quantity.setBaseReference(new Reference(quantity.getBaseReference().type(), quantity.getBase().getId()));
-        }
+    }
+
+    public void clearModel(Drawing drawing) {
+        drawing.getElements().clear();
+        drawing.getPositions().clear();
+        drawing.setNote("");
     }
 }

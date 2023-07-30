@@ -106,8 +106,11 @@ public class ModelStateManager {
         return true;
     }
 
-    public static <T> T deepCopy(T model, Class<T> type) {
-        return type.cast(copyModel(model));
+    public static <T> List<T> deepCopy(List<T> model, Class<T> type) {
+        return model.stream()
+                .map(ModelStateManager::copyModel)
+                .map(type::cast)
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     private static Object copyModel(Object model) {

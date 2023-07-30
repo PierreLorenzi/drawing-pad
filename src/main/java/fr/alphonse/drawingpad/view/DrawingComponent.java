@@ -19,6 +19,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class DrawingComponent extends JComponent {
 
@@ -180,7 +181,7 @@ public class DrawingComponent extends JComponent {
     private void reactToModelChange() {
         // elements of the selection may have disappeared
         int selectionSizeBeforeFilter = this.selectedElements.size();
-        this.selectedElements.removeIf(element -> !doesElementExistInModel(element, model));
+        this.selectedElements.removeIf(element -> !model.getElements().contains(element));
         if (this.selectedElements.size() != selectionSizeBeforeFilter) {
             this.selectionChangeDetector.notifyChange();
         }
@@ -188,24 +189,9 @@ public class DrawingComponent extends JComponent {
         this.repaint();
     }
 
-    private static boolean doesElementExistInModel(GraphElement element, Drawing model) {
-        Graph graph = model.getGraph();
-        return switch (element) {
-            case Object object -> graph.getObjects().contains(object);
-            case Completion completion -> graph.getCompletions().contains(completion);
-            case Quantity quantity -> graph.getQuantities().contains(quantity);
-            case Link link -> graph.getLinks().contains(link);
-        };
-    }
-
     public void delete() {
         for (GraphElement selectedElement: selectedElements) {
-            switch (selectedElement) {
-                case Object object -> ModelHandler.deleteObject(object, model);
-                case Completion completion -> ModelHandler.deleteCompletion(completion, model);
-                case Quantity quantity -> ModelHandler.deleteQuantity(quantity, model);
-                case Link link -> ModelHandler.deleteLink(link, model);
-            }
+            ModelHandler.deleteElement(selectedElement, model);
         }
         this.selectedElements.clear();
         this.selectionChangeDetector.notifyChange();
@@ -241,7 +227,7 @@ public class DrawingComponent extends JComponent {
 
         g.setColor(Color.BLACK);
         Map<GraphElement, Position> positions = model.getPositions();
-        for (Object object: model.getGraph().getObjects()) {
+        streamElementsOfType(model.getElements(), Object.class).forEach(object ->{
             var position = positions.get(object);
 
             g.setColor(Color.GRAY);
@@ -256,9 +242,9 @@ public class DrawingComponent extends JComponent {
                 g.setColor(Color.BLACK);
             }
             g.fillRect(position.x()-OBJECT_RECTANGLE_RADIUS, position.y()-OBJECT_RECTANGLE_RADIUS, 2*OBJECT_RECTANGLE_RADIUS, 2*OBJECT_RECTANGLE_RADIUS);
-        }
+        });
 
-        for (Completion completion: model.getGraph().getCompletions()) {
+        streamElementsOfType(model.getElements(), Completion.class).forEach(completion ->{
             var position = positions.get(completion);
 
             if (selectedElements.contains(completion)) {
@@ -269,9 +255,9 @@ public class DrawingComponent extends JComponent {
             }
             g.fillOval(position.x()-CIRCLE_RADIUS, position.y()-CIRCLE_RADIUS, 2*CIRCLE_RADIUS, 2*CIRCLE_RADIUS);
             drawBaseJoin(completion, completion.getBase(), g);
-        }
+        });
 
-        for (Quantity quantity: model.getGraph().getQuantities()) {
+        streamElementsOfType(model.getElements(), Quantity.class).forEach(quantity ->{
             var position = positions.get(quantity);
 
             if (selectedElements.contains(quantity)) {
@@ -282,12 +268,12 @@ public class DrawingComponent extends JComponent {
             }
             g.fillOval(position.x()-CIRCLE_RADIUS, position.y()-CIRCLE_RADIUS, 2*CIRCLE_RADIUS, 2*CIRCLE_RADIUS);
             drawBaseJoin(quantity, quantity.getBase(), g);
-        }
+        });
 
-        for (Link link : model.getGraph().getLinks()) {
+        streamElementsOfType(model.getElements(), Link.class).forEach(link ->{
             boolean isSelected = selectedElements.contains(link);
             drawLink(link, g, isSelected);
-        }
+        });
 
         // draw link being dragged
         if (newLinkOrigin != null) {
@@ -298,6 +284,12 @@ public class DrawingComponent extends JComponent {
         }
 
         g.translate(-translationX, -translationY);
+    }
+
+    private static <T extends GraphElement> Stream<T> streamElementsOfType(List<GraphElement> elements, Class<T> type) {
+        return elements.stream()
+                .filter(type::isInstance)
+                .map(type::cast);
     }
 
     private void drawBaseJoin(GraphElement element, GraphElement base, Graphics g) {
@@ -599,24 +591,8 @@ public class DrawingComponent extends JComponent {
     }
 
     private GraphElement findElementAtPosition(Position position) {
-        Object object = findElementAtPositionInList(position, model.getGraph().getObjects());
-        if (object != null) {
-            return object;
-        }
-        Completion completion = findElementAtPositionInList(position, model.getGraph().getCompletions());
-        if (completion != null) {
-            return completion;
-        }
-        Quantity quantity = findElementAtPositionInList(position, model.getGraph().getQuantities());
-        if (quantity != null) {
-            return quantity;
-        }
-        return findElementAtPositionInList(position, model.getGraph().getLinks());
-    }
-
-    private <T extends GraphElement> T findElementAtPositionInList(Position position, List<T> vertices) {
         Function<GraphElement,Integer> computeDistanceFunction = (element -> computePositionDistanceFromElement(position, element));
-        return vertices.stream()
+        return model.getElements().stream()
                 .filter(element -> computeDistanceFunction.apply(element) < OBJECT_RADIUS)
                 .min(Comparator.comparing(computeDistanceFunction))
                 .orElse(null);
@@ -700,7 +676,7 @@ public class DrawingComponent extends JComponent {
 
     private List<GraphElement> listElementsToDragAmong(List<GraphElement> elements) {
         var newElements = new ArrayList<>(elements);
-        addLinksBetweenElements(newElements);
+        addDependentElements(newElements);
         return newElements.stream()
                 .filter(element -> !(element instanceof Link link && model.getPositions().get(link) == null))
                 .toList();
@@ -751,12 +727,12 @@ public class DrawingComponent extends JComponent {
         }
         if (selectionRectangleOrigin != null) {
             this.selectionRectangleDestination = position;
-            List<Object> objectsInRectangle = model.getGraph().getObjects().stream()
+            List<Object> objectsInRectangle = streamElementsOfType(model.getElements(), Object.class)
                     .filter(object -> isInRectangleBetweenPoints(model.getPositions().get(object), selectionRectangleOrigin, selectionRectangleDestination))
                     .toList();
             this.selectedElements.clear();
             this.selectedElements.addAll(objectsInRectangle);
-            addLinksBetweenElements(this.selectedElements);
+            addDependentElements(this.selectedElements);
             this.selectionChangeDetector.notifyChange();
             this.repaint();
             return;
@@ -787,24 +763,17 @@ public class DrawingComponent extends JComponent {
                 position.y() < Math.max(corner1.y(), corner2.y());
     }
 
-    private void addLinksBetweenElements(List<GraphElement> elements) {
-        List<Completion> completionsToAdd;
-        List<Quantity> quantitiesToAdd;
-        List<Link> linksToAdd;
-        do {
-            completionsToAdd = model.getGraph().getCompletions().stream()
-                    .filter(completion -> !elements.contains(completion) && elements.contains(completion.getBase()))
-                    .toList();
-            quantitiesToAdd = model.getGraph().getQuantities().stream()
-                    .filter(quantity -> !elements.contains(quantity) && elements.contains(quantity.getBase()))
-                    .toList();
-            linksToAdd = model.getGraph().getLinks().stream()
-                    .filter(link -> !elements.contains(link) && elements.contains(link.getOrigin()) && elements.contains(link.getDestination()))
-                    .toList();
-            elements.addAll(completionsToAdd);
-            elements.addAll(quantitiesToAdd);
-            elements.addAll(linksToAdd);
-        } while (!completionsToAdd.isEmpty() || !quantitiesToAdd.isEmpty() || !linksToAdd.isEmpty());
+    private void addDependentElements(List<GraphElement> elements) {
+        int size = elements.size();
+        for (int i=0 ; i<size ; i++) {
+            GraphElement element = elements.get(i);
+            List<GraphElement> dependentElements = ModelHandler.listDependentElements(element, model);
+            for (GraphElement dependentElement: dependentElements) {
+                if (!elements.contains(dependentElement)) {
+                    elements.add(dependentElement);
+                }
+            }
+        }
     }
 
     private void updateMagneticGuides() {
@@ -813,7 +782,7 @@ public class DrawingComponent extends JComponent {
                 .filter(element -> !(element instanceof Link))
                 .map(this::findElementPosition)
                 .toList();
-        List<Position> otherPositions = ModelHandler.streamElementsInModel(model)
+        List<Position> otherPositions = model.getElements().stream()
                 .filter(element -> !(element instanceof Link))
                 .filter(element -> dragRelativeVectors.get(element) == null)
                 .map(this::findElementPosition)
@@ -917,18 +886,14 @@ public class DrawingComponent extends JComponent {
 
     public void selectAll() {
         this.selectedElements.clear();
-        this.selectedElements.addAll(model.getGraph().getObjects());
-        this.selectedElements.addAll(model.getGraph().getCompletions());
-        this.selectedElements.addAll(model.getGraph().getQuantities());
-        this.selectedElements.addAll(model.getGraph().getLinks());
+        this.selectedElements.addAll(model.getElements());
         this.selectionChangeDetector.notifyChange();
         repaint();
     }
 
     public void paste(Drawing drawing) {
         Drawing pastedModel = GraphHandler.addModelToModel(drawing, this.model);
-        List<GraphElement> newElements = ModelHandler.streamElementsInModel(pastedModel)
-                .toList();
+        List<GraphElement> newElements = pastedModel.getElements();
 
         // shift the new elements
         int shiftCount = computeShiftCount(drawing);
