@@ -1,6 +1,7 @@
 package fr.alphonse.drawingpad.data;
 
 import fr.alphonse.drawingpad.data.geometry.Position;
+import fr.alphonse.drawingpad.data.geometry.Vector;
 import fr.alphonse.drawingpad.data.model.GraphElement;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,6 +20,8 @@ public class Drawing {
     private List<GraphElement> elements;
 
     private Map<GraphElement, Position> positions;
+
+    private Map<GraphElement, Vector> namePositions;
 
     private String note;
 }

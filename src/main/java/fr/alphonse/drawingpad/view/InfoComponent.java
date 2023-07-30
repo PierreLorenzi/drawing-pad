@@ -1,6 +1,7 @@
 package fr.alphonse.drawingpad.view;
 
 import fr.alphonse.drawingpad.data.Drawing;
+import fr.alphonse.drawingpad.data.geometry.Vector;
 import fr.alphonse.drawingpad.data.model.Object;
 import fr.alphonse.drawingpad.data.model.*;
 import fr.alphonse.drawingpad.document.utils.ChangeDetector;
@@ -29,15 +30,21 @@ public class InfoComponent extends JPanel {
 
     private JTextField objectNameField;
 
+    private JCheckBox objectNameVisibleCheckBox;
+
     private Completion selectedCompletion = null;
 
     private JTextField completionNameField;
+
+    private JCheckBox completionNameVisibleCheckBox;
 
     private GraduatedValueComponent completionValueComponent;
 
     private GraduatedValueComponent completionLocalValueComponent;
 
     private Quantity selectedQuantity = null;
+
+    private JCheckBox quantityNameVisibleCheckBox;
 
     private JTextField quantityNameField;
 
@@ -48,6 +55,8 @@ public class InfoComponent extends JPanel {
     private Link selectedLink = null;
 
     private JTextField linkNameField;
+
+    private JCheckBox linkNameVisibleCheckBox;
 
     private GraduatedValueComponent linkFactorComponent;
 
@@ -62,6 +71,8 @@ public class InfoComponent extends JPanel {
     private static final String QUANTITY_SELECTION_CARD = "quantity";
 
     private static final String LINK_SELECTION_CARD = "link";
+
+    private final static Vector ELEMENT_NAME_SHIFT = new Vector(14, 5);
 
     public InfoComponent(java.util.List<GraphElement> selection, ChangeDetector<?,?> selectionChangeDetector, ChangeDetector<?,?> modelChangeDetector, Drawing model) {
         super();
@@ -161,6 +172,15 @@ public class InfoComponent extends JPanel {
         }});
         this.objectNameField = nameField;
 
+        JCheckBox nameVisibleCheckBox = makeNameVisibleCheckBox(panel);
+        nameVisibleCheckBox.addActionListener(event -> {
+            if (this.selectedObject != null) {
+                changeNameVisible(this.selectedObject, nameVisibleCheckBox.isSelected());
+                this.modelChangeDetector.notifyChangeCausedBy(InfoComponent.this);
+            }
+        });
+        this.objectNameVisibleCheckBox = nameVisibleCheckBox;
+
         return panel;
     }
 
@@ -187,6 +207,27 @@ public class InfoComponent extends JPanel {
         return textField;
     }
 
+    private JCheckBox makeNameVisibleCheckBox(JPanel panel) {
+
+        // name
+        var checkbox = new JCheckBox();
+        checkbox.setText("Visible Name");
+        checkbox.setForeground(Color.WHITE);
+        checkbox.setHorizontalAlignment(SwingConstants.CENTER);
+        panel.add(checkbox);
+
+        return checkbox;
+    }
+
+    private void changeNameVisible(GraphElement element, boolean newValue) {
+        if (newValue) {
+            model.getNamePositions().put(element, ELEMENT_NAME_SHIFT);
+        }
+        else {
+            model.getNamePositions().remove(element);
+        }
+    }
+
     private JPanel makeCompletionSelectionView() {
         JPanel panel = makeInfoPanel();
         JTextField nameField = makeNameField(panel);
@@ -195,6 +236,15 @@ public class InfoComponent extends JPanel {
             this.modelChangeDetector.notifyChangeCausedBy(InfoComponent.this);
         }});
         this.completionNameField = nameField;
+
+        JCheckBox nameVisibleCheckBox = makeNameVisibleCheckBox(panel);
+        nameVisibleCheckBox.addActionListener(event -> {
+            if (this.selectedCompletion != null) {
+                changeNameVisible(this.selectedCompletion, nameVisibleCheckBox.isSelected());
+                this.modelChangeDetector.notifyChangeCausedBy(InfoComponent.this);
+            }
+        });
+        this.completionNameVisibleCheckBox = nameVisibleCheckBox;
 
         // value
         panel.add(Box.createVerticalStrut(30));
@@ -226,6 +276,15 @@ public class InfoComponent extends JPanel {
         }});
         this.quantityNameField = nameField;
 
+        JCheckBox nameVisibleCheckBox = makeNameVisibleCheckBox(panel);
+        nameVisibleCheckBox.addActionListener(event -> {
+            if (this.selectedQuantity != null) {
+                changeNameVisible(this.selectedQuantity, nameVisibleCheckBox.isSelected());
+                this.modelChangeDetector.notifyChangeCausedBy(InfoComponent.this);
+            }
+        });
+        this.quantityNameVisibleCheckBox = nameVisibleCheckBox;
+
         // value
         panel.add(Box.createVerticalStrut(30));
         JLabel valueLabel = new JLabel("Value:");
@@ -256,6 +315,15 @@ public class InfoComponent extends JPanel {
             this.modelChangeDetector.notifyChangeCausedBy(InfoComponent.this);
         }});
         this.linkNameField = nameField;
+
+        JCheckBox nameVisibleCheckBox = makeNameVisibleCheckBox(panel);
+        nameVisibleCheckBox.addActionListener(event -> {
+            if (this.selectedLink != null) {
+                changeNameVisible(this.selectedLink, nameVisibleCheckBox.isSelected());
+                this.modelChangeDetector.notifyChangeCausedBy(InfoComponent.this);
+            }
+        });
+        this.linkNameVisibleCheckBox = nameVisibleCheckBox;
 
         // factor
         panel.add(Box.createVerticalStrut(30));
@@ -322,6 +390,11 @@ public class InfoComponent extends JPanel {
     private void updateObjectSelectionView(Object object) {
         selectedObject = object;
         objectNameField.setText(object.getName());
+        objectNameVisibleCheckBox.setSelected(checkIfNameVisible(object));
+    }
+
+    private boolean checkIfNameVisible(GraphElement element) {
+        return model.getNamePositions().get(element) != null;
     }
 
     private void updateCompletionSelectionView(Completion completion) {
@@ -329,6 +402,7 @@ public class InfoComponent extends JPanel {
         completionNameField.setText(completion.getName());
         completionValueComponent.setValue(completion.getValue());
         completionLocalValueComponent.setValue(completion.getLocalValue());
+        completionNameVisibleCheckBox.setSelected(checkIfNameVisible(completion));
     }
 
     private void updateQuantitySelectionView(Quantity quantity) {
@@ -336,12 +410,14 @@ public class InfoComponent extends JPanel {
         quantityNameField.setText(quantity.getName());
         quantityValueComponent.setValue(quantity.getValue());
         quantityLocalValueComponent.setValue(quantity.getLocalValue());
+        quantityNameVisibleCheckBox.setSelected(checkIfNameVisible(quantity));
     }
 
     private void updateLinkSelectionView(Link link) {
         selectedLink = link;
         linkNameField.setText(link.getName());
         linkFactorComponent.setValue(link.getFactor());
+        linkNameVisibleCheckBox.setSelected(checkIfNameVisible(link));
     }
 
     private void reactToModelChange() {

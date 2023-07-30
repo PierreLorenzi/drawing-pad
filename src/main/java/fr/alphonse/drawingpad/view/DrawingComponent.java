@@ -62,6 +62,12 @@ public class DrawingComponent extends JComponent {
 
     private Vector draggedCenterRelativePosition = null;
 
+    private GraphElement draggedNameElement;
+
+    private Vector draggedNameRelativePosition;
+
+    private Position draggedNameCenter;
+
     private final List<Integer> guidesX = new ArrayList<>();
 
     private final List<Integer> guidesY = new ArrayList<>();
@@ -69,6 +75,8 @@ public class DrawingComponent extends JComponent {
     private Drawing lastPastedModel;
 
     private int lastPastedCount = 0;
+
+    private FontMetrics nameFontMetrics;
 
     private static final int OBJECT_RECTANGLE_RADIUS = 8;
 
@@ -106,7 +114,11 @@ public class DrawingComponent extends JComponent {
 
     private static final int INITIAL_DISTANCE_FROM_BASE = 30;
 
-    private static  final Vector PASTE_SHIFT = new Vector(70, 30);
+    private static final  Vector PASTE_SHIFT = new Vector(70, 30);
+
+    private static final Font NAME_FONT = new Font("Georgia", Font.PLAIN, 14);
+
+    private static final int NAME_MARGIN = 3;
 
     public DrawingComponent(Drawing model, ChangeDetector<?,?> changeDetector) {
         super();
@@ -218,6 +230,9 @@ public class DrawingComponent extends JComponent {
             g.fillRect(originX, originY, width, height);
         }
 
+        // draw names
+        drawNames(g);
+
         // draw guides
         g.setColor(Color.blue);
         for (Integer guideX: guidesX) {
@@ -241,7 +256,31 @@ public class DrawingComponent extends JComponent {
             drawLinkBetweenPositions(linePosition1, newLinkCenter, position2, g, false);
         }
 
+        // save metrics
+        if (nameFontMetrics == null) {
+            nameFontMetrics = g.getFontMetrics(NAME_FONT);
+        }
+
         g.translate(-translationX, -translationY);
+    }
+
+    private void drawNames(Graphics g) {
+        g.setColor(Color.BLACK);
+        g.setFont(NAME_FONT);
+        for (GraphElement element: model.getNamePositions().keySet()) {
+            String name = element.getName();
+            if (name == null || name.isEmpty()) {
+                continue;
+            }
+            Position namePosition = computeNamePositionOfElement(element);
+            g.drawString(name, namePosition.x(), namePosition.y());
+        }
+    }
+
+    private Position computeNamePositionOfElement(GraphElement element) {
+        Vector nameRelativePosition = model.getNamePositions().get(element);
+        Position elementPosition = geometryManager.findElementPosition(element);
+        return elementPosition.translate(nameRelativePosition);
     }
 
     private static <T extends GraphElement> Stream<T> streamElementsOfType(List<GraphElement> elements, Class<T> type) {
@@ -432,6 +471,17 @@ public class DrawingComponent extends JComponent {
             return;
         }
         boolean isShiftKeyPressed = (event.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) != 0;
+        // name drag
+        if (!isShiftKeyPressed && clickedElement == null) {
+            GraphElement element = findElementWhoseNameContainsPosition(position);
+            if (element != null) {
+                this.draggedNameElement = element;
+                this.draggedNameCenter = geometryManager.findElementPosition(element);
+                Position namePosition = computeNamePositionOfElement(element);
+                this.draggedNameRelativePosition = Vector.between(position, namePosition);
+                return;
+            }
+        }
         // link center drag
         if (!isShiftKeyPressed && clickedElement instanceof Link link && isPositionAtLinkCenter(position, link)) {
             this.draggedCenterLink = link;
@@ -488,6 +538,24 @@ public class DrawingComponent extends JComponent {
         return Vector.between(position, center).length() <= LINK_CENTER_CLICK_RADIUS;
     }
 
+    private GraphElement findElementWhoseNameContainsPosition(Position position) {
+        for (GraphElement element: model.getNamePositions().keySet()) {
+            String name = element.getName();
+            if (name == null || name.isEmpty()) {
+                continue;
+            }
+            Position namePosition = computeNamePositionOfElement(element);
+            int width = nameFontMetrics.stringWidth(name);
+            int ascent = nameFontMetrics.getAscent();
+            int descent = nameFontMetrics.getDescent();
+            if (position.x() >= namePosition.x() - NAME_MARGIN && position.x() <= namePosition.x() + width + NAME_MARGIN &&
+            position.y() >= namePosition.y() - ascent - NAME_MARGIN && position.y() <= namePosition.y() + descent + NAME_MARGIN) {
+                return element;
+            }
+        }
+        return null;
+    }
+
     private Position findLinkCenter(Link link) {
         return model.getPositions().get(link);
     }
@@ -513,6 +581,13 @@ public class DrawingComponent extends JComponent {
             this.draggedCenterRelativePosition = null;
             this.model.getPositions().put(link, newCenter);
             this.repaint();
+            this.changeDetector.notifyChangeCausedBy(this);
+            return;
+        }
+        if (this.draggedNameElement != null) {
+            this.draggedNameElement = null;
+            this.draggedNameCenter = null;
+            this.draggedNameRelativePosition = null;
             this.changeDetector.notifyChangeCausedBy(this);
             return;
         }
@@ -547,6 +622,13 @@ public class DrawingComponent extends JComponent {
             this.repaint();
             return;
         }
+        if (this.draggedNameElement != null) {
+            Position newNamePosition = position.translate(this.draggedNameRelativePosition);
+            Vector newNameRelativePosition = Vector.between(this.draggedNameCenter, newNamePosition);
+            this.model.getNamePositions().put(this.draggedNameElement, newNameRelativePosition);
+            this.repaint();
+            return;
+        }
         if (selectionRectangleOrigin != null) {
             this.selectionRectangleDestination = position;
             List<Object> objectsInRectangle = streamElementsOfType(model.getElements(), Object.class)
@@ -565,17 +647,13 @@ public class DrawingComponent extends JComponent {
         this.hasDragged = true;
         hasDraggedElements = false;
         for (GraphElement selectedElement: dragRelativeVectors.keySet()) {
-            changeElementPosition(selectedElement, position.translate(this.dragRelativeVectors.get(selectedElement)));
+            model.getPositions().put(selectedElement, position.translate(this.dragRelativeVectors.get(selectedElement)));
             hasDraggedElements = true;
         }
         if (hasDraggedElements) {
             updateMagneticGuides();
             this.repaint();
         }
-    }
-
-    private void changeElementPosition(GraphElement element, Position position) {
-        model.getPositions().put(element, position);
     }
 
     private boolean isInRectangleBetweenPoints(Position position, Position corner1, Position corner2) {
@@ -656,7 +734,7 @@ public class DrawingComponent extends JComponent {
     private void applyMagneticShiftToSelectedElements(Vector shift) {
         for (GraphElement selectedElement: selectedElements) {
             if (!(selectedElement instanceof Link link && model.getPositions().get(link) == null)) {
-                changeElementPosition(selectedElement, geometryManager.findElementPosition(selectedElement).translate(shift));
+                model.getPositions().put(selectedElement, geometryManager.findElementPosition(selectedElement).translate(shift));
             }
         }
     }
@@ -728,7 +806,7 @@ public class DrawingComponent extends JComponent {
                 continue;
             }
             Position position = geometryManager.findElementPosition(newElement);
-            changeElementPosition(newElement, position.translate(shift));
+            model.getPositions().put(newElement, position.translate(shift));
         }
 
         this.selectedElements.clear();

@@ -3,6 +3,7 @@ package fr.alphonse.drawingpad.document.utils;
 import fr.alphonse.drawingpad.data.Drawing;
 import fr.alphonse.drawingpad.data.DrawingJson;
 import fr.alphonse.drawingpad.data.geometry.Position;
+import fr.alphonse.drawingpad.data.geometry.Vector;
 import fr.alphonse.drawingpad.data.model.Object;
 import fr.alphonse.drawingpad.data.model.*;
 import lombok.experimental.UtilityClass;
@@ -21,6 +22,7 @@ public class GraphHandler {
         return Drawing.builder()
                 .elements(new ArrayList<>())
                 .positions(new HashMap<>())
+                .namePositions(new HashMap<>())
                 .note("")
                 .build();
     }
@@ -43,6 +45,9 @@ public class GraphHandler {
 
         Map<GraphElement, Position> positions = mapKeys(json.getPositions(), id -> findElementWithId(id, newElements));
         model.getPositions().putAll(positions);
+
+        Map<GraphElement, Vector> namePositions = mapKeys(json.getNamePositions(), id -> findElementWithId(id, newElements));
+        model.getNamePositions().putAll(namePositions);
 
         model.setNote(json.getNote());
     }
@@ -79,6 +84,7 @@ public class GraphHandler {
         return DrawingJson.builder()
                 .elements(ModelStateManager.deepCopy(model.getElements(), GraphElement.class))
                 .positions(mapKeys(model.getPositions(), GraphElement::getId))
+                .namePositions(mapKeys(model.getNamePositions(), GraphElement::getId))
                 .note(model.getNote())
                 .build();
     }
@@ -90,6 +96,7 @@ public class GraphHandler {
         return Drawing.builder()
                 .elements(new ArrayList<>(elements))
                 .positions(model.getPositions().keySet().stream().filter(elements::contains).collect(Collectors.toMap(Function.identity(), model.getPositions()::get)))
+                .namePositions(model.getNamePositions().keySet().stream().filter(elements::contains).collect(Collectors.toMap(Function.identity(), model.getNamePositions()::get)))
                 .note("")
                 .build();
     }
@@ -116,6 +123,7 @@ public class GraphHandler {
         elements.addAll(elementsToAdd);
 
         model.getPositions().putAll(newModelToAdd.getPositions());
+        model.getNamePositions().putAll(newModelToAdd.getNamePositions());
 
         return newModelToAdd;
     }
@@ -158,6 +166,7 @@ public class GraphHandler {
     public void clearModel(Drawing drawing) {
         drawing.getElements().clear();
         drawing.getPositions().clear();
+        drawing.getNamePositions().clear();
         drawing.setNote("");
     }
 }
