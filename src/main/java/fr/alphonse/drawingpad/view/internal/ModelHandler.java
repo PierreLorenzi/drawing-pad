@@ -39,7 +39,7 @@ public class ModelHandler {
         var id = GraphHandler.findAvailableId(drawing.getElements());
         completion.setId(id);
         completion.setBase(base);
-        completion.setBaseReference(GraphHandler.makeReferenceForElement(base));
+        completion.setBaseId(base.getId());
         completion.setValue(new Value());
         completion.setLocalValue(new Value());
         return completion;
@@ -56,7 +56,7 @@ public class ModelHandler {
         var id = GraphHandler.findAvailableId(drawing.getElements());
         quantity.setId(id);
         quantity.setBase(base);
-        quantity.setBaseReference(GraphHandler.makeReferenceForElement(base));
+        quantity.setBaseId(base.getId());
         quantity.setValue(new Value());
         quantity.setLocalValue(new Value());
         return quantity;
@@ -76,10 +76,10 @@ public class ModelHandler {
         link.setId(id);
         link.setOrigin(origin);
         link.setOriginLinkDirection(originLinkDirection);
-        link.setOriginReference(GraphHandler.makeReferenceForElement(origin));
+        link.setOriginId(origin.getId());
         link.setDestination(destination);
         link.setDestinationLinkDirection(destinationLinkDirection);
-        link.setDestinationReference(GraphHandler.makeReferenceForElement(destination));
+        link.setDestinationId(destination.getId());
         link.setFactor(new Value());
         return link;
     }

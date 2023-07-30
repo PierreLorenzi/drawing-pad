@@ -51,11 +51,11 @@ public class GraphHandler {
         for (GraphElement element: elements) {
             switch (element) {
                 case Object ignored -> doNothing();
-                case Completion completion -> completion.setBase(GraphHandler.findElementAtReference(completion.getBaseReference(), elements));
-                case Quantity quantity -> quantity.setBase(GraphHandler.findElementAtReference(quantity.getBaseReference(), elements));
+                case Completion completion -> completion.setBase(GraphHandler.findElementWithId(completion.getBaseId(), elements));
+                case Quantity quantity -> quantity.setBase(GraphHandler.findElementWithId(quantity.getBaseId(), elements));
                 case Link link -> {
-                    link.setOrigin(GraphHandler.findElementAtReference(link.getOriginReference(), elements));
-                    link.setDestination(GraphHandler.findElementAtReference(link.getDestinationReference(), elements));
+                    link.setOrigin(GraphHandler.findElementWithId(link.getOriginId(), elements));
+                    link.setDestination(GraphHandler.findElementWithId(link.getDestinationId(), elements));
                 }
             }
         }
@@ -81,25 +81,6 @@ public class GraphHandler {
                 .positions(mapKeys(model.getPositions(), GraphElement::getId))
                 .note(model.getNote())
                 .build();
-    }
-
-    public static GraphElement findElementAtReference(Reference reference, List<GraphElement> elements) {
-        final int id = reference.id();
-        return switch (reference.type()) {
-            case OBJECT -> elements.stream().filter(element -> element instanceof Object && element.getId() == id).findFirst().orElseThrow();
-            case COMPLETION -> elements.stream().filter(element -> element instanceof Completion && element.getId() == id).findFirst().orElseThrow();
-            case QUANTITY -> elements.stream().filter(element -> element instanceof Quantity && element.getId() == id).findFirst().orElseThrow();
-            case LINK -> elements.stream().filter(element -> element instanceof Link && element.getId() == id).findFirst().orElseThrow();
-        };
-    }
-
-    public Reference makeReferenceForElement(GraphElement element) {
-        return switch (element) {
-            case Object object -> new Reference(ReferenceType.OBJECT, object.getId());
-            case Completion completion -> new Reference(ReferenceType.COMPLETION, completion.getId());
-            case Quantity quantity -> new Reference(ReferenceType.QUANTITY, quantity.getId());
-            case Link link -> new Reference(ReferenceType.LINK, link.getId());
-        };
     }
 
     public static Drawing extractModelWithElements(Drawing model, List<GraphElement> elements) {
@@ -164,11 +145,11 @@ public class GraphHandler {
         for (GraphElement element: elements) {
             switch (element) {
                 case Object ignored -> doNothing();
-                case Completion completion -> completion.setBaseReference(new Reference(completion.getBaseReference().type(), completion.getBase().getId()));
-                case Quantity quantity -> quantity.setBaseReference(new Reference(quantity.getBaseReference().type(), quantity.getBase().getId()));
+                case Completion completion -> completion.setBaseId(completion.getBase().getId());
+                case Quantity quantity -> quantity.setBaseId(quantity.getBase().getId());
                 case Link link -> {
-                    link.setOriginReference(new Reference(link.getOriginReference().type(), link.getOrigin().getId()));
-                    link.setDestinationReference(new Reference(link.getDestinationReference().type(), link.getDestination().getId()));
+                    link.setOriginId(link.getOrigin().getId());
+                    link.setDestinationId(link.getDestination().getId());
                 }
             }
         }

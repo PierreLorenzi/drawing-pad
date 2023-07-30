@@ -2,7 +2,6 @@ package fr.alphonse.drawingpad.data.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import fr.alphonse.drawingpad.data.model.reference.LinkDirection;
-import fr.alphonse.drawingpad.data.model.reference.Reference;
 import fr.alphonse.drawingpad.data.model.value.Value;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -14,12 +13,12 @@ import lombok.experimental.SuperBuilder;
 @EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
 public final class Link extends GraphElement {
 
-    private Reference originReference;
+    private Integer originId;
 
     // nullable
     private LinkDirection originLinkDirection;
 
-    private Reference destinationReference;
+    private Integer destinationId;
 
     // nullable
     private LinkDirection destinationLinkDirection;

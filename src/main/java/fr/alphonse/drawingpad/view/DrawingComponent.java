@@ -29,7 +29,7 @@ public class DrawingComponent extends JComponent {
 
     private final List<GraphElement> selectedElements = new ArrayList<>();
 
-    public static final Function<List<GraphElement>, ?> SELECTION_STATE_FUNCTION = elements -> elements.stream().map(GraphHandler::makeReferenceForElement).collect(Collectors.toSet());
+    public static final Function<List<GraphElement>, ?> SELECTION_STATE_FUNCTION = elements -> elements.stream().map(GraphElement::getId).collect(Collectors.toSet());
 
     private final ChangeDetector<List<GraphElement>,?> selectionChangeDetector = new ChangeDetector<>(selectedElements, SELECTION_STATE_FUNCTION);
 

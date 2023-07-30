@@ -1,7 +1,6 @@
 package fr.alphonse.drawingpad.data.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import fr.alphonse.drawingpad.data.model.reference.Reference;
 import fr.alphonse.drawingpad.data.model.value.Value;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -13,7 +12,7 @@ import lombok.experimental.SuperBuilder;
 @EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
 public final class Completion extends GraphElement {
 
-    private Reference baseReference;
+    private Integer baseId;
 
     // <= 1
     private Value localValue;
