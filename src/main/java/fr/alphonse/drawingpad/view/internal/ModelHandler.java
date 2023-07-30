@@ -87,7 +87,7 @@ public class ModelHandler {
         return link;
     }
 
-    private Reference makeReferenceForElement(GraphElement element) {
+    public Reference makeReferenceForElement(GraphElement element) {
         return switch (element) {
             case Object object -> new Reference(ReferenceType.OBJECT, object.getId());
             case Completion completion -> new Reference(ReferenceType.COMPLETION, completion.getId());
