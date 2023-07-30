@@ -9,6 +9,7 @@ import fr.alphonse.drawingpad.data.model.reference.LinkDirection;
 import fr.alphonse.drawingpad.document.utils.ChangeDetector;
 import fr.alphonse.drawingpad.document.utils.Graduations;
 import fr.alphonse.drawingpad.document.utils.GraphHandler;
+import fr.alphonse.drawingpad.view.internal.GeometryManager;
 import fr.alphonse.drawingpad.view.internal.ModelHandler;
 
 import javax.swing.*;
@@ -26,6 +27,8 @@ public class DrawingComponent extends JComponent {
     private final Drawing model;
 
     private final ChangeDetector<?,?> changeDetector;
+
+    private final GeometryManager geometryManager;
 
     private final List<GraphElement> selectedElements = new ArrayList<>();
 
@@ -69,8 +72,6 @@ public class DrawingComponent extends JComponent {
 
     private static final int OBJECT_RECTANGLE_RADIUS = 8;
 
-    private static final int OBJECT_RADIUS = 10;
-
     private static final float ARROW_DISTANCE = 20;
 
     private static final double ARROW_ANGLE = Math.toRadians(25);
@@ -105,14 +106,13 @@ public class DrawingComponent extends JComponent {
 
     private static final int INITIAL_DISTANCE_FROM_BASE = 30;
 
-    private static final int CIRCLE_RADIUS = 6;
-
     private static  final Vector PASTE_SHIFT = new Vector(70, 30);
 
     public DrawingComponent(Drawing model, ChangeDetector<?,?> changeDetector) {
         super();
         this.model = model;
         this.changeDetector = changeDetector;
+        this.geometryManager = new GeometryManager(model);
         changeDetector.addListener(this, DrawingComponent::reactToModelChange);
         setBackground(Color.WHITE);
         addMouseListener(new MouseListener() {
@@ -208,6 +208,7 @@ public class DrawingComponent extends JComponent {
         int translationY = getHeight() / 2;
         g.translate(translationX, translationY);
 
+        // draw selection rectangle
         if (this.selectionRectangleOrigin != null && this.selectionRectangleDestination != null) {
             g.setColor(Color.LIGHT_GRAY);
             var originX = Math.min(selectionRectangleOrigin.x(), selectionRectangleDestination.x());
@@ -217,6 +218,7 @@ public class DrawingComponent extends JComponent {
             g.fillRect(originX, originY, width, height);
         }
 
+        // draw guides
         g.setColor(Color.blue);
         for (Integer guideX: guidesX) {
             g.drawLine(guideX, -translationY, guideX, translationY);
@@ -225,61 +227,17 @@ public class DrawingComponent extends JComponent {
             g.drawLine(-translationX, guideY, translationX, guideY);
         }
 
-        g.setColor(Color.BLACK);
-        Map<GraphElement, Position> positions = model.getPositions();
-        streamElementsOfType(model.getElements(), Object.class).forEach(object ->{
-            var position = positions.get(object);
-
-            g.setColor(Color.GRAY);
-            ((Graphics2D)g).setStroke(SHADOW_STROKE);
-            g.drawLine(position.x()-OBJECT_RECTANGLE_RADIUS+2, position.y()+OBJECT_RECTANGLE_RADIUS, position.x()+OBJECT_RECTANGLE_RADIUS, position.y()+OBJECT_RECTANGLE_RADIUS);
-            g.drawLine(position.x()+OBJECT_RECTANGLE_RADIUS, position.y()-OBJECT_RECTANGLE_RADIUS+2, position.x()+OBJECT_RECTANGLE_RADIUS, position.y()+OBJECT_RECTANGLE_RADIUS);
-
-            if (selectedElements.contains(object)) {
-                g.setColor(SELECTION_COLOR);
-            }
-            else {
-                g.setColor(Color.BLACK);
-            }
-            g.fillRect(position.x()-OBJECT_RECTANGLE_RADIUS, position.y()-OBJECT_RECTANGLE_RADIUS, 2*OBJECT_RECTANGLE_RADIUS, 2*OBJECT_RECTANGLE_RADIUS);
-        });
-
-        streamElementsOfType(model.getElements(), Completion.class).forEach(completion ->{
-            var position = positions.get(completion);
-
-            if (selectedElements.contains(completion)) {
-                g.setColor(SELECTION_COLOR);
-            }
-            else {
-                g.setColor(Color.BLUE);
-            }
-            g.fillOval(position.x()-CIRCLE_RADIUS, position.y()-CIRCLE_RADIUS, 2*CIRCLE_RADIUS, 2*CIRCLE_RADIUS);
-            drawBaseJoin(completion, completion.getBase(), g);
-        });
-
-        streamElementsOfType(model.getElements(), Quantity.class).forEach(quantity ->{
-            var position = positions.get(quantity);
-
-            if (selectedElements.contains(quantity)) {
-                g.setColor(SELECTION_COLOR);
-            }
-            else {
-                g.setColor(Color.ORANGE);
-            }
-            g.fillOval(position.x()-CIRCLE_RADIUS, position.y()-CIRCLE_RADIUS, 2*CIRCLE_RADIUS, 2*CIRCLE_RADIUS);
-            drawBaseJoin(quantity, quantity.getBase(), g);
-        });
-
-        streamElementsOfType(model.getElements(), Link.class).forEach(link ->{
-            boolean isSelected = selectedElements.contains(link);
-            drawLink(link, g, isSelected);
-        });
+        // draw elements
+        for (Class<? extends GraphElement> type: GeometryManager.DISPLAYED_ELEMENT_TYPES) {
+            streamElementsOfType(model.getElements(), type)
+                    .forEach(element -> drawElement(element, g));
+        }
 
         // draw link being dragged
         if (newLinkOrigin != null) {
-            var position1 = findVertexPosition(newLinkOrigin, newOriginLinkDirection);
+            var position1 = geometryManager.findVertexPosition(newLinkOrigin, newOriginLinkDirection);
             Position position2 = findMousePosition();
-            var linePosition1 = computeArrowMeetingPositionWithElement(newLinkCenter != null ? newLinkCenter : position2, position1, newLinkOrigin);
+            var linePosition1 = geometryManager.computeArrowMeetingPositionWithElement(newLinkCenter != null ? newLinkCenter : position2, position1, newLinkOrigin);
             drawLinkBetweenPositions(linePosition1, newLinkCenter, position2, g, false);
         }
 
@@ -292,22 +250,76 @@ public class DrawingComponent extends JComponent {
                 .map(type::cast);
     }
 
+    private void drawElement(GraphElement element, Graphics g) {
+        switch (element) {
+            case Object object -> drawObject(object, g);
+            case Completion completion -> drawCompletion(completion, g);
+            case Quantity quantity -> drawQuantity(quantity, g);
+            case Link link -> drawLink(link, g);
+        }
+    }
+
+
+    private void drawObject(Object object, Graphics g) {
+        var position = model.getPositions().get(object);
+
+        g.setColor(Color.GRAY);
+        ((Graphics2D) g).setStroke(SHADOW_STROKE);
+        g.drawLine(position.x()-OBJECT_RECTANGLE_RADIUS+2, position.y()+OBJECT_RECTANGLE_RADIUS, position.x()+OBJECT_RECTANGLE_RADIUS, position.y()+OBJECT_RECTANGLE_RADIUS);
+        g.drawLine(position.x()+OBJECT_RECTANGLE_RADIUS, position.y()-OBJECT_RECTANGLE_RADIUS+2, position.x()+OBJECT_RECTANGLE_RADIUS, position.y()+OBJECT_RECTANGLE_RADIUS);
+
+        if (selectedElements.contains(object)) {
+            g.setColor(SELECTION_COLOR);
+        }
+        else {
+            g.setColor(Color.BLACK);
+        }
+        g.fillRect(position.x()-OBJECT_RECTANGLE_RADIUS, position.y()-OBJECT_RECTANGLE_RADIUS, 2*OBJECT_RECTANGLE_RADIUS, 2*OBJECT_RECTANGLE_RADIUS);
+    }
+
+    private void drawCompletion(Completion completion, Graphics g) {
+        var position = model.getPositions().get(completion);
+
+        if (selectedElements.contains(completion)) {
+            g.setColor(SELECTION_COLOR);
+        }
+        else {
+            g.setColor(Color.BLUE);
+        }
+        g.fillOval(position.x()-GeometryManager.CIRCLE_RADIUS, position.y()-GeometryManager.CIRCLE_RADIUS, 2*GeometryManager.CIRCLE_RADIUS, 2*GeometryManager.CIRCLE_RADIUS);
+        drawBaseJoin(completion, completion.getBase(), g);
+    }
+
     private void drawBaseJoin(GraphElement element, GraphElement base, Graphics g) {
-        var position1 = findElementPosition(element);
-        var position2 = findElementPosition(base);
-        var linePosition1 = computeArrowMeetingPositionWithElement(position2, position1, element);
-        var linePosition2 = computeArrowMeetingPositionWithElement(position1, position2, base);
+        var position1 = geometryManager.findElementPosition(element);
+        var position2 = geometryManager.findElementPosition(base);
+        var linePosition1 = geometryManager.computeArrowMeetingPositionWithElement(position2, position1, element);
+        var linePosition2 = geometryManager.computeArrowMeetingPositionWithElement(position1, position2, base);
         ((Graphics2D)g).setStroke(BASE_LINE_STROKE);
         g.setColor(Color.BLACK);
         g.drawLine(linePosition1.x(), linePosition1.y(), linePosition2.x(), linePosition2.y());
     }
 
-    private void drawLink(Link link, Graphics g, boolean isSelected) {
-        var position1 = findVertexPosition(link.getOrigin(), link.getOriginLinkDirection());
-        var position2 = findVertexPosition(link.getDestination(), link.getDestinationLinkDirection());
+    private void drawQuantity(Quantity quantity, Graphics g) {
+        var position = model.getPositions().get(quantity);
+
+        if (selectedElements.contains(quantity)) {
+            g.setColor(SELECTION_COLOR);
+        }
+        else {
+            g.setColor(Color.ORANGE);
+        }
+        g.fillOval(position.x()-GeometryManager.CIRCLE_RADIUS, position.y()-GeometryManager.CIRCLE_RADIUS, 2*GeometryManager.CIRCLE_RADIUS, 2*GeometryManager.CIRCLE_RADIUS);
+        drawBaseJoin(quantity, quantity.getBase(), g);
+    }
+
+    private void drawLink(Link link, Graphics g) {
+        var position1 = geometryManager.findVertexPosition(link.getOrigin(), link.getOriginLinkDirection());
+        var position2 = geometryManager.findVertexPosition(link.getDestination(), link.getDestinationLinkDirection());
         var center = findLinkCenter(link);
-        var linePosition1 = computeArrowMeetingPositionWithElement(center != null ? center : position2, position1, link.getOrigin());
-        var linePosition2 = computeArrowMeetingPositionWithElement(center != null ? center : position1, position2, link.getDestination());
+        var linePosition1 = geometryManager.computeArrowMeetingPositionWithElement(center != null ? center : position2, position1, link.getOrigin());
+        var linePosition2 = geometryManager.computeArrowMeetingPositionWithElement(center != null ? center : position1, position2, link.getDestination());
+        boolean isSelected = selectedElements.contains(link);
         drawLinkBetweenPositions(linePosition1, center, linePosition2, g, isSelected);
         if (Graduations.isStrictlyGreaterThanOne(link.getFactor().getGraduation())) {
             Position secondPosition = (center != null) ? center : position2;
@@ -344,89 +356,6 @@ public class DrawingComponent extends JComponent {
         return findPointPosition(point);
     }
 
-    private Position findVertexPosition(GraphElement element, LinkDirection linkDirection) {
-        if (element instanceof Link link) {
-            return findLinkVertexPosition(link, linkDirection);
-        }
-        return findElementPosition(element);
-    }
-
-    private Position findLinkVertexPosition(Link link, LinkDirection linkDirection) {
-        return switch (linkDirection) {
-            case DIRECT -> {
-                var position1 = findVertexPosition(link.getOrigin(), link.getOriginLinkDirection());
-                var center = model.getPositions().get(link);
-                if (center != null) {
-                    yield Position.middle(position1, center);
-                }
-                var position2 = findVertexPosition(link.getDestination(), link.getDestinationLinkDirection());
-                yield findFirstQuarter(position1, position2);
-            }
-            case REVERSE -> {
-                var position2 = findVertexPosition(link.getDestination(), link.getDestinationLinkDirection());
-                var center = model.getPositions().get(link);
-                if (center != null) {
-                    yield Position.middle(center, position2);
-                }
-                var position1 = findVertexPosition(link.getOrigin(), link.getOriginLinkDirection());
-                yield findFirstQuarter(position2, position1);
-            }
-        };
-    }
-
-    private Position findObjectPosition(Object object) {
-        return model.getPositions().get(object);
-    }
-
-    private Position findCompletionPosition(Completion completion) {
-        return model.getPositions().get(completion);
-    }
-
-    private Position findQuantityPosition(Quantity quantity) {
-        return model.getPositions().get(quantity);
-    }
-
-    public static Position findFirstQuarter(Position p1, Position p2) {
-        return new Position((p1.x()*3 + p2.x())/4, (p1.y()*3 + p2.y())/4);
-    }
-
-    private Position computeArrowMeetingPositionWithElement(Position position1, Position position2, GraphElement element) {
-        return switch (element) {
-            case Object ignored -> computeArrowMeetingPositionWithObject(position1, position2);
-            case Completion ignored -> computeArrowMeetingPositionWithCircle(position1, position2);
-            case Quantity ignored -> computeArrowMeetingPositionWithCircle(position1, position2);
-            case Link ignored -> position2;
-        };
-    }
-
-    private static Position computeArrowMeetingPositionWithObject(Position position1, Position position2) {
-        var vector = Vector.between(position1, position2);
-        boolean isHorizontal = Math.abs(vector.x()) > Math.abs(vector.y());
-        if (isHorizontal) {
-            if (vector.x() > 0) {
-                return new Position(position2.x() - OBJECT_RADIUS, position2.y() - OBJECT_RADIUS * vector.y() / vector.x());
-            }
-            else if (vector.x() < 0) {
-                return new Position(position2.x() + OBJECT_RADIUS, position2.y() + OBJECT_RADIUS * vector.y() / vector.x());
-            }
-        }
-        else {
-            if (vector.y() > 0) {
-                return new Position(position2.x() - OBJECT_RADIUS * vector.x() / vector.y(), position2.y() - OBJECT_RADIUS);
-            }
-            else if (vector.y() < 0) {
-                return new Position(position2.x() + OBJECT_RADIUS * vector.x() / vector.y(), position2.y() + OBJECT_RADIUS);
-            }
-        }
-        return position2;
-    }
-
-    private Position computeArrowMeetingPositionWithCircle(Position position1, Position position2) {
-        var vector = Vector.between(position1, position2);
-        Vector relativeArrow = vector.multiply((float) -CIRCLE_RADIUS / vector.length());
-        return position2.translate(relativeArrow);
-    }
-
     private void drawArrow(Position origin, Position destination, Graphics g) {
         Vector lineVector = Vector.between(origin, destination);
         Vector arrowBaseVector = lineVector.multiply(ARROW_DISTANCE / lineVector.length());
@@ -444,7 +373,7 @@ public class DrawingComponent extends JComponent {
     private void reactToClick(MouseEvent event) {
         Position position = findEventPosition(event);
         clickPosition = position;
-        var clickedElement = findElementAtPosition(position);
+        var clickedElement = geometryManager.findElementAtPosition(position);
         // if drawing a link
         if (this.newLinkOrigin != null) {
             this.repaint();
@@ -462,7 +391,7 @@ public class DrawingComponent extends JComponent {
             if (clickedElement == origin) {
                 return;
             }
-            LinkDirection destinationLinkDirection = findLinkDirectionAtPosition(clickedElement, position);
+            LinkDirection destinationLinkDirection = geometryManager.findLinkDirectionAtPosition(clickedElement, position);
             ModelHandler.addLink(origin, originLinkDirection, clickedElement, destinationLinkDirection, center, model);
             changeDetector.notifyChangeCausedBy(this);
             return;
@@ -476,7 +405,7 @@ public class DrawingComponent extends JComponent {
             }
             else {
                 newLinkOrigin = clickedElement;
-                newOriginLinkDirection = findLinkDirectionAtPosition(clickedElement, position);
+                newOriginLinkDirection = geometryManager.findLinkDirectionAtPosition(clickedElement, position);
             }
             return;
         }
@@ -485,7 +414,7 @@ public class DrawingComponent extends JComponent {
             if (clickedElement == null) {
                 return;
             }
-            Position newPosition = makePositionFromBase(findElementPosition(clickedElement));
+            Position newPosition = makePositionFromBase(geometryManager.findElementPosition(clickedElement));
             ModelHandler.addCompletion(clickedElement, newPosition, model);
             changeDetector.notifyChangeCausedBy(this);
             repaint();
@@ -496,7 +425,7 @@ public class DrawingComponent extends JComponent {
             if (clickedElement == null) {
                 return;
             }
-            Position newPosition = makePositionFromBase(findElementPosition(clickedElement));
+            Position newPosition = makePositionFromBase(geometryManager.findElementPosition(clickedElement));
             ModelHandler.addQuantity(clickedElement, newPosition, model);
             changeDetector.notifyChangeCausedBy(this);
             repaint();
@@ -536,50 +465,11 @@ public class DrawingComponent extends JComponent {
         }
         this.dragRelativeVectors = listElementsToDragAmong(this.selectedElements).stream()
                 .filter(element -> !(element instanceof Link link && findLinkCenter(link) == null))
-                .collect(Collectors.toMap(Function.identity(), element -> Vector.between(position, findElementPosition(element))));
+                .collect(Collectors.toMap(Function.identity(), element -> Vector.between(position, geometryManager.findElementPosition(element))));
         if (alreadySelected && !isShiftKeyPressed) {
             return;
         }
         this.repaint();
-    }
-
-    private Position findElementPosition(GraphElement element) {
-        return switch (element) {
-            case Object object -> findObjectPosition(object);
-            case Completion completion -> findCompletionPosition(completion);
-            case Quantity quantity -> findQuantityPosition(quantity);
-            case Link link -> findLinkPosition(link);
-        };
-    }
-
-    private Position findLinkPosition(Link link) {
-        Position center = findLinkCenter(link);
-        if (center != null) {
-            return center;
-        }
-        var position1 = findVertexPosition(link.getOrigin(), link.getOriginLinkDirection());
-        var position2 = findVertexPosition(link.getDestination(), link.getDestinationLinkDirection());
-        return Position.middle(position1, position2);
-    }
-
-    private LinkDirection findLinkDirectionAtPosition(GraphElement element, Position position) {
-        if (element instanceof Link link) {
-
-            var position1 = findVertexPosition(link.getOrigin(), link.getOriginLinkDirection());
-            var position2 = findVertexPosition(link.getDestination(), link.getDestinationLinkDirection());
-            var center = findElementPosition(link);
-
-            int distanceFromFirstHalf = findPositionDistanceFromLine(position, position1, center);
-            int distanceFromSecondHalf = findPositionDistanceFromLine(position, center, position2);
-            if (distanceFromFirstHalf <= distanceFromSecondHalf) {
-                return LinkDirection.DIRECT;
-            }
-            else {
-                return LinkDirection.REVERSE;
-            }
-
-        }
-        return null;
     }
 
     private Position findEventPosition(MouseEvent event) {
@@ -590,76 +480,8 @@ public class DrawingComponent extends JComponent {
         return new Position(point.x - this.getBounds().width/2, point.y - this.getBounds().height/2);
     }
 
-    private GraphElement findElementAtPosition(Position position) {
-        Function<GraphElement,Integer> computeDistanceFunction = (element -> computePositionDistanceFromElement(position, element));
-        return model.getElements().stream()
-                .filter(element -> computeDistanceFunction.apply(element) < OBJECT_RADIUS)
-                .min(Comparator.comparing(computeDistanceFunction))
-                .orElse(null);
-    }
-
-    private int computePositionDistanceFromElement(Position position, GraphElement element) {
-        return switch (element) {
-            case Object object -> findPositionDistanceFromObject(position, object);
-            case Completion completion -> findPositionDistanceFromCompletion(position, completion);
-            case Quantity quantity -> findPositionDistanceFromQuantity(position, quantity);
-            case Link link -> findPositionDistanceFromLink(position, link);
-        };
-    }
-
-    private int findPositionDistanceFromObject(Position position, Object object) {
-        var objectPosition = findObjectPosition(object);
-        var relativePosition = Vector.between(objectPosition, position);
-        return relativePosition.infiniteNormLength();
-    }
-
-    private int findPositionDistanceFromCompletion(Position position, Completion completion) {
-        var completionPosition = findCompletionPosition(completion);
-        var relativePosition = Vector.between(completionPosition, position);
-        return relativePosition.infiniteNormLength();
-    }
-
-    private int findPositionDistanceFromQuantity(Position position, Quantity quantity) {
-        var quantityPosition = findQuantityPosition(quantity);
-        var relativePosition = Vector.between(quantityPosition, position);
-        return relativePosition.infiniteNormLength();
-    }
-
-    private int findPositionDistanceFromLink(Position position, Link link) {
-
-        var position1 = findVertexPosition(link.getOrigin(), link.getOriginLinkDirection());
-        var position2 = findVertexPosition(link.getDestination(), link.getDestinationLinkDirection());
-        var center = findLinkCenter(link);
-
-        if (center == null) {
-            return findPositionDistanceFromLine(position, position1, position2);
-        }
-
-        int distanceFromFirstHalf = findPositionDistanceFromLine(position, position1, center);
-        int distanceFromSecondHalf = findPositionDistanceFromLine(position, center, position2);
-        return Math.min(distanceFromFirstHalf, distanceFromSecondHalf);
-    }
-
-    private int findPositionDistanceFromLine(Position position, Position lineOrigin, Position lineDestination) {
-
-        var positionVector = Vector.between(lineOrigin, position);
-        var linkVector = Vector.between(lineOrigin, lineDestination);
-        float linkLength = Math.round(linkVector.length());
-
-        float relativePositionAlongVector = Vector.scalarProduct(positionVector, linkVector) / linkLength / linkLength;
-        if (relativePositionAlongVector < 0) {
-            return (int)Position.distance(lineOrigin, position);
-        }
-        else if (relativePositionAlongVector > 1) {
-            return (int)Position.distance(lineDestination, position);
-        }
-
-        float distanceFromLine = Math.abs(Vector.discriminant(positionVector, linkVector)) / linkLength;
-        return (int)distanceFromLine;
-    }
-
     private boolean isPositionAtLinkCenter(Position position, Link link) {
-        Position center = findLinkCenter(link);
+        Position center = model.getPositions().get(link);
         if (center == null) {
             return false;
         }
@@ -780,12 +602,12 @@ public class DrawingComponent extends JComponent {
         this.clearGuides();
         List<Position> draggedPositions = dragRelativeVectors.keySet().stream()
                 .filter(element -> !(element instanceof Link))
-                .map(this::findElementPosition)
+                .map(geometryManager::findElementPosition)
                 .toList();
         List<Position> otherPositions = model.getElements().stream()
                 .filter(element -> !(element instanceof Link))
                 .filter(element -> dragRelativeVectors.get(element) == null)
-                .map(this::findElementPosition)
+                .map(geometryManager::findElementPosition)
                 .toList();
         Integer nearbyGuideDeltaX = findPossibleGuideAndComputeDelta(draggedPositions, otherPositions, Position::x);
         Integer nearbyGuideDeltaY = findPossibleGuideAndComputeDelta(draggedPositions, otherPositions, Position::y);
@@ -833,8 +655,8 @@ public class DrawingComponent extends JComponent {
 
     private void applyMagneticShiftToSelectedElements(Vector shift) {
         for (GraphElement selectedElement: selectedElements) {
-            if (!(selectedElement instanceof Link)) {
-                changeElementPosition(selectedElement, findElementPosition(selectedElement).translate(shift));
+            if (!(selectedElement instanceof Link link && model.getPositions().get(link) == null)) {
+                changeElementPosition(selectedElement, geometryManager.findElementPosition(selectedElement).translate(shift));
             }
         }
     }
@@ -863,11 +685,14 @@ public class DrawingComponent extends JComponent {
 
     private void moveSelectedElementBy(Vector delta) {
         boolean needsRefresh = false;
-        for (GraphElement selectedElement: selectedElements) {
-            if (selectedElement instanceof Object object) {
-                this.model.getPositions().put(object, this.model.getPositions().get(object).translate(delta));
-                needsRefresh = true;
+        ArrayList<GraphElement> elementsToMove = new ArrayList<>(selectedElements);
+        addDependentElements(elementsToMove);
+        for (GraphElement element: elementsToMove) {
+            if (element instanceof Link link && model.getPositions().get(link) == null) {
+                continue;
             }
+            this.model.getPositions().put(element, this.model.getPositions().get(element).translate(delta));
+            needsRefresh = true;
         }
         if (needsRefresh) {
             this.changeDetector.notifyChangeCausedBy(this);
@@ -902,7 +727,7 @@ public class DrawingComponent extends JComponent {
             if (newElement instanceof Link link && model.getPositions().get(link) == null) {
                 continue;
             }
-            Position position = findElementPosition(newElement);
+            Position position = geometryManager.findElementPosition(newElement);
             changeElementPosition(newElement, position.translate(shift));
         }
 
