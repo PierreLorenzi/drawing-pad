@@ -6,6 +6,7 @@ import fr.alphonse.drawingpad.data.geometry.Position;
 import fr.alphonse.drawingpad.data.model.Object;
 import fr.alphonse.drawingpad.data.model.*;
 import fr.alphonse.drawingpad.data.model.reference.Reference;
+import fr.alphonse.drawingpad.data.model.reference.ReferenceType;
 import lombok.experimental.UtilityClass;
 
 import java.util.ArrayList;
@@ -27,9 +28,6 @@ public class GraphHandler {
                         .links(new ArrayList<>())
                         .build())
                 .positions(new HashMap<>())
-                .completionPositions(new HashMap<>())
-                .quantityPositions(new HashMap<>())
-                .linkCenters(new HashMap<>())
                 .note("")
                 .build();
     }
@@ -50,15 +48,8 @@ public class GraphHandler {
 
         model.setGraph(newGraph);
 
-        Map<Object, Position> positions = json.getPositions().keySet().stream().collect(Collectors.toMap(id -> GraphHandler.findGraphElementWithId(newGraph.getObjects(), id), json.getPositions()::get));
-        Map<Completion, Position> completionPositions = json.getCompletionPositions().keySet().stream().collect(Collectors.toMap(id -> GraphHandler.findGraphElementWithId(newGraph.getCompletions(), id), json.getCompletionPositions()::get));
-        Map<Quantity, Position> quantityPositions = json.getQuantityPositions().keySet().stream().collect(Collectors.toMap(id -> GraphHandler.findGraphElementWithId(newGraph.getQuantities(), id), json.getQuantityPositions()::get));
-        Map<Link, Position> linkCenters = json.getLinkCenters().keySet().stream().collect(Collectors.toMap(id -> GraphHandler.findGraphElementWithId(newGraph.getLinks(), id), json.getLinkCenters()::get));
-
+        Map<GraphElement, Position> positions = mapKeys(json.getPositions(), reference -> findElementAtReference(reference, newGraph));
         model.getPositions().putAll(positions);
-        model.getCompletionPositions().putAll(completionPositions);
-        model.getQuantityPositions().putAll(quantityPositions);
-        model.getLinkCenters().putAll(linkCenters);
 
         model.setNote(json.getNote());
     }
@@ -76,17 +67,15 @@ public class GraphHandler {
         }
     }
 
+    private static <K1, K2, V> Map<K2,V> mapKeys(Map<K1,V> map, Function<K1, K2> function) {
+        return map.keySet().stream()
+                .collect(Collectors.toMap(function, map::get));
+    }
+
     public static DrawingJson mapModelToJson(Drawing model) {
         return DrawingJson.builder()
                 .graph(ModelStateManager.deepCopy(model.getGraph(), Graph.class))
-                .positions(model.getPositions().keySet().stream()
-                        .collect(Collectors.toMap(Object::getId,model.getPositions()::get)))
-                .completionPositions(model.getCompletionPositions().keySet().stream()
-                        .collect(Collectors.toMap(Completion::getId,model.getCompletionPositions()::get)))
-                .quantityPositions(model.getQuantityPositions().keySet().stream()
-                        .collect(Collectors.toMap(Quantity::getId,model.getQuantityPositions()::get)))
-                .linkCenters(model.getLinkCenters().keySet().stream()
-                        .collect(Collectors.toMap(Link::getId,model.getLinkCenters()::get)))
+                .positions(mapKeys(model.getPositions(), GraphHandler::makeReferenceForElement))
                 .note(model.getNote())
                 .build();
     }
@@ -98,6 +87,15 @@ public class GraphHandler {
             case COMPLETION -> findGraphElementWithId(graph.getCompletions(), id);
             case QUANTITY -> findGraphElementWithId(graph.getQuantities(), id);
             case LINK -> findGraphElementWithId(graph.getLinks(), id);
+        };
+    }
+
+    public Reference makeReferenceForElement(GraphElement element) {
+        return switch (element) {
+            case Object object -> new Reference(ReferenceType.OBJECT, object.getId());
+            case Completion completion -> new Reference(ReferenceType.COMPLETION, completion.getId());
+            case Quantity quantity -> new Reference(ReferenceType.QUANTITY, quantity.getId());
+            case Link link -> new Reference(ReferenceType.LINK, link.getId());
         };
     }
 
@@ -120,9 +118,6 @@ public class GraphHandler {
                         .links(graph.getLinks().stream().filter(elements::contains).toList())
                         .build())
                 .positions(model.getPositions().keySet().stream().filter(elements::contains).collect(Collectors.toMap(Function.identity(), model.getPositions()::get)))
-                .completionPositions(model.getCompletionPositions().keySet().stream().filter(elements::contains).collect(Collectors.toMap(Function.identity(), model.getCompletionPositions()::get)))
-                .quantityPositions(model.getQuantityPositions().keySet().stream().filter(elements::contains).collect(Collectors.toMap(Function.identity(), model.getQuantityPositions()::get)))
-                .linkCenters(model.getLinkCenters().keySet().stream().filter(elements::contains).collect(Collectors.toMap(Function.identity(), model.getLinkCenters()::get)))
                 .note("")
                 .build();
     }
@@ -155,9 +150,6 @@ public class GraphHandler {
         graph.getLinks().addAll(graphToAdd.getLinks());
 
         model.getPositions().putAll(newModelToAdd.getPositions());
-        model.getCompletionPositions().putAll(newModelToAdd.getCompletionPositions());
-        model.getQuantityPositions().putAll(newModelToAdd.getQuantityPositions());
-        model.getLinkCenters().putAll(newModelToAdd.getLinkCenters());
 
         return newModelToAdd;
     }

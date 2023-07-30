@@ -28,7 +28,7 @@ public class DrawingComponent extends JComponent {
 
     private final List<GraphElement> selectedElements = new ArrayList<>();
 
-    public static final Function<List<GraphElement>, ?> SELECTION_STATE_FUNCTION = elements -> elements.stream().map(ModelHandler::makeReferenceForElement).collect(Collectors.toSet());
+    public static final Function<List<GraphElement>, ?> SELECTION_STATE_FUNCTION = elements -> elements.stream().map(GraphHandler::makeReferenceForElement).collect(Collectors.toSet());
 
     private final ChangeDetector<List<GraphElement>,?> selectionChangeDetector = new ChangeDetector<>(selectedElements, SELECTION_STATE_FUNCTION);
 
@@ -240,7 +240,7 @@ public class DrawingComponent extends JComponent {
         }
 
         g.setColor(Color.BLACK);
-        Map<Object, Position> positions = model.getPositions();
+        Map<GraphElement, Position> positions = model.getPositions();
         for (Object object: model.getGraph().getObjects()) {
             var position = positions.get(object);
 
@@ -258,9 +258,8 @@ public class DrawingComponent extends JComponent {
             g.fillRect(position.x()-OBJECT_RECTANGLE_RADIUS, position.y()-OBJECT_RECTANGLE_RADIUS, 2*OBJECT_RECTANGLE_RADIUS, 2*OBJECT_RECTANGLE_RADIUS);
         }
 
-        Map<Completion, Position> completionPositions = model.getCompletionPositions();
         for (Completion completion: model.getGraph().getCompletions()) {
-            var position = completionPositions.get(completion);
+            var position = positions.get(completion);
 
             if (selectedElements.contains(completion)) {
                 g.setColor(SELECTION_COLOR);
@@ -272,9 +271,8 @@ public class DrawingComponent extends JComponent {
             drawBaseJoin(completion, completion.getBase(), g);
         }
 
-        Map<Quantity, Position> quantityPositions = model.getQuantityPositions();
         for (Quantity quantity: model.getGraph().getQuantities()) {
-            var position = quantityPositions.get(quantity);
+            var position = positions.get(quantity);
 
             if (selectedElements.contains(quantity)) {
                 g.setColor(SELECTION_COLOR);
@@ -365,7 +363,7 @@ public class DrawingComponent extends JComponent {
         return switch (linkDirection) {
             case DIRECT -> {
                 var position1 = findVertexPosition(link.getOrigin(), link.getOriginLinkDirection());
-                var center = model.getLinkCenters().get(link);
+                var center = model.getPositions().get(link);
                 if (center != null) {
                     yield Position.middle(position1, center);
                 }
@@ -374,7 +372,7 @@ public class DrawingComponent extends JComponent {
             }
             case REVERSE -> {
                 var position2 = findVertexPosition(link.getDestination(), link.getDestinationLinkDirection());
-                var center = model.getLinkCenters().get(link);
+                var center = model.getPositions().get(link);
                 if (center != null) {
                     yield Position.middle(center, position2);
                 }
@@ -389,11 +387,11 @@ public class DrawingComponent extends JComponent {
     }
 
     private Position findCompletionPosition(Completion completion) {
-        return model.getCompletionPositions().get(completion);
+        return model.getPositions().get(completion);
     }
 
     private Position findQuantityPosition(Quantity quantity) {
-        return model.getQuantityPositions().get(quantity);
+        return model.getPositions().get(quantity);
     }
 
     public static Position findFirstQuarter(Position p1, Position p2) {
@@ -693,7 +691,7 @@ public class DrawingComponent extends JComponent {
     }
 
     private Position findLinkCenter(Link link) {
-        return model.getLinkCenters().get(link);
+        return model.getPositions().get(link);
     }
 
     private Position makePositionFromBase(Position basePosition) {
@@ -704,7 +702,7 @@ public class DrawingComponent extends JComponent {
         var newElements = new ArrayList<>(elements);
         addLinksBetweenElements(newElements);
         return newElements.stream()
-                .filter(element -> !(element instanceof Link link && model.getLinkCenters().get(link) == null))
+                .filter(element -> !(element instanceof Link link && model.getPositions().get(link) == null))
                 .toList();
     }
 
@@ -715,7 +713,7 @@ public class DrawingComponent extends JComponent {
             var link = this.draggedCenterLink;
             this.draggedCenterLink = null;
             this.draggedCenterRelativePosition = null;
-            this.model.getLinkCenters().put(link, newCenter);
+            this.model.getPositions().put(link, newCenter);
             this.repaint();
             this.changeDetector.notifyChangeCausedBy(this);
             return;
@@ -747,7 +745,7 @@ public class DrawingComponent extends JComponent {
         }
         if (this.draggedCenterLink != null) {
             var newCenter = position.translate(this.draggedCenterRelativePosition);
-            this.model.getLinkCenters().put(this.draggedCenterLink, newCenter);
+            this.model.getPositions().put(this.draggedCenterLink, newCenter);
             this.repaint();
             return;
         }
@@ -779,12 +777,7 @@ public class DrawingComponent extends JComponent {
     }
 
     private void changeElementPosition(GraphElement element, Position position) {
-        switch (element) {
-            case Object object -> model.getPositions().put(object, position);
-            case Completion completion -> model.getCompletionPositions().put(completion, position);
-            case Quantity quantity -> model.getQuantityPositions().put(quantity, position);
-            case Link link -> model.getLinkCenters().put(link, position);
-        }
+        model.getPositions().put(element, position);
     }
 
     private boolean isInRectangleBetweenPoints(Position position, Position corner1, Position corner2) {
@@ -941,7 +934,7 @@ public class DrawingComponent extends JComponent {
         int shiftCount = computeShiftCount(drawing);
         Vector shift = PASTE_SHIFT.multiply(shiftCount);
         for (GraphElement newElement: newElements) {
-            if (newElement instanceof Link link && model.getLinkCenters().get(link) == null) {
+            if (newElement instanceof Link link && model.getPositions().get(link) == null) {
                 continue;
             }
             Position position = findElementPosition(newElement);

@@ -5,8 +5,6 @@ import fr.alphonse.drawingpad.data.geometry.Position;
 import fr.alphonse.drawingpad.data.model.Object;
 import fr.alphonse.drawingpad.data.model.*;
 import fr.alphonse.drawingpad.data.model.reference.LinkDirection;
-import fr.alphonse.drawingpad.data.model.reference.Reference;
-import fr.alphonse.drawingpad.data.model.reference.ReferenceType;
 import fr.alphonse.drawingpad.data.model.value.Value;
 import fr.alphonse.drawingpad.document.utils.GraphHandler;
 import lombok.experimental.UtilityClass;
@@ -34,7 +32,7 @@ public class ModelHandler {
     public static void addCompletion(GraphElement base, Position position, Drawing drawing) {
         Completion completion = makeCompletion(base, drawing);
         drawing.getGraph().getCompletions().add(completion);
-        drawing.getCompletionPositions().put(completion, position);
+        drawing.getPositions().put(completion, position);
     }
 
     private static Completion makeCompletion(GraphElement base, Drawing drawing) {
@@ -42,7 +40,7 @@ public class ModelHandler {
         var id = GraphHandler.findAvailableId(drawing.getGraph().getCompletions());
         completion.setId(id);
         completion.setBase(base);
-        completion.setBaseReference(makeReferenceForElement(base));
+        completion.setBaseReference(GraphHandler.makeReferenceForElement(base));
         completion.setValue(new Value());
         completion.setLocalValue(new Value());
         return completion;
@@ -51,7 +49,7 @@ public class ModelHandler {
     public static void addQuantity(GraphElement base, Position position, Drawing drawing) {
         Quantity quantity = makeQuantity(base, drawing);
         drawing.getGraph().getQuantities().add(quantity);
-        drawing.getQuantityPositions().put(quantity, position);
+        drawing.getPositions().put(quantity, position);
     }
 
     private static Quantity makeQuantity(GraphElement base, Drawing drawing) {
@@ -59,7 +57,7 @@ public class ModelHandler {
         var id = GraphHandler.findAvailableId(drawing.getGraph().getQuantities());
         quantity.setId(id);
         quantity.setBase(base);
-        quantity.setBaseReference(makeReferenceForElement(base));
+        quantity.setBaseReference(GraphHandler.makeReferenceForElement(base));
         quantity.setValue(new Value());
         quantity.setLocalValue(new Value());
         return quantity;
@@ -69,7 +67,7 @@ public class ModelHandler {
         Link link = makeLink(origin, originLinkDirection, destination, destinationLinkDirection, drawing);
         drawing.getGraph().getLinks().add(link);
         if (center != null) {
-            drawing.getLinkCenters().put(link, center);
+            drawing.getPositions().put(link, center);
         }
     }
 
@@ -79,21 +77,12 @@ public class ModelHandler {
         link.setId(id);
         link.setOrigin(origin);
         link.setOriginLinkDirection(originLinkDirection);
-        link.setOriginReference(makeReferenceForElement(origin));
+        link.setOriginReference(GraphHandler.makeReferenceForElement(origin));
         link.setDestination(destination);
         link.setDestinationLinkDirection(destinationLinkDirection);
-        link.setDestinationReference(makeReferenceForElement(destination));
+        link.setDestinationReference(GraphHandler.makeReferenceForElement(destination));
         link.setFactor(new Value());
         return link;
-    }
-
-    public Reference makeReferenceForElement(GraphElement element) {
-        return switch (element) {
-            case Object object -> new Reference(ReferenceType.OBJECT, object.getId());
-            case Completion completion -> new Reference(ReferenceType.COMPLETION, completion.getId());
-            case Quantity quantity -> new Reference(ReferenceType.QUANTITY, quantity.getId());
-            case Link link -> new Reference(ReferenceType.LINK, link.getId());
-        };
     }
 
     public static void deleteObject(Object object, Drawing drawing) {
@@ -151,7 +140,7 @@ public class ModelHandler {
 
     public static void deleteCompletionWithoutDependents(Completion completion, Drawing drawing) {
         drawing.getGraph().getCompletions().remove(completion);
-        drawing.getCompletionPositions().remove(completion);
+        drawing.getPositions().remove(completion);
     }
 
     public static void deleteQuantity(Quantity quantity, Drawing drawing) {
@@ -162,7 +151,7 @@ public class ModelHandler {
 
     public static void deleteQuantityWithoutDependents(Quantity quantity, Drawing drawing) {
         drawing.getGraph().getQuantities().remove(quantity);
-        drawing.getQuantityPositions().remove(quantity);
+        drawing.getPositions().remove(quantity);
     }
 
     public static void deleteLink(Link link, Drawing drawing) {
@@ -173,7 +162,7 @@ public class ModelHandler {
 
     public static void deleteLinkWithoutDependents(Link link, Drawing drawing) {
         drawing.getGraph().getLinks().remove(link);
-        drawing.getLinkCenters().remove(link);
+        drawing.getPositions().remove(link);
     }
 
     public static Stream<GraphElement> streamElementsInModel(Drawing model) {

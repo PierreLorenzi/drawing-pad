@@ -2,6 +2,7 @@ package fr.alphonse.drawingpad.data;
 
 import fr.alphonse.drawingpad.data.geometry.Position;
 import fr.alphonse.drawingpad.data.model.Graph;
+import fr.alphonse.drawingpad.data.model.reference.Reference;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,13 +20,7 @@ public class DrawingJson {
 
     private Graph graph;
 
-    private Map<Integer, Position> positions;
-
-    private Map<Integer, Position> completionPositions;
-
-    private Map<Integer, Position> quantityPositions;
-
-    private Map<Integer, Position> linkCenters;
+    private Map<Reference, Position> positions;
 
     private String note;
 }

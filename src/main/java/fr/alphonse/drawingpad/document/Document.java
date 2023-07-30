@@ -1,9 +1,14 @@
 package fr.alphonse.drawingpad.document;
 
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.KeyDeserializer;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import fr.alphonse.drawingpad.data.Drawing;
 import fr.alphonse.drawingpad.data.DrawingJson;
 import fr.alphonse.drawingpad.data.model.GraphElement;
+import fr.alphonse.drawingpad.data.model.reference.Reference;
+import fr.alphonse.drawingpad.data.model.reference.ReferenceType;
 import fr.alphonse.drawingpad.document.utils.ChangeDetector;
 import fr.alphonse.drawingpad.document.utils.DocumentUtils;
 import fr.alphonse.drawingpad.document.utils.GraphHandler;
@@ -20,6 +25,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Document {
 
@@ -58,8 +65,34 @@ public class Document {
     }
 
     private static Drawing importFile(Path path) throws IOException {
-        DrawingJson json = new JsonMapper().readValue(path.toFile(), DrawingJson.class);
+        JsonMapper jsonMapper = makeReadMapper();
+        DrawingJson json = jsonMapper.readValue(path.toFile(), DrawingJson.class);
         return GraphHandler.mapJsonToModel(json);
+    }
+
+    private static JsonMapper makeReadMapper() {
+        // in order to handle non-string keys, we must declare a key deserializer
+        JsonMapper jsonMapper = new JsonMapper();
+        SimpleModule simpleModule = new SimpleModule();
+        simpleModule.addKeyDeserializer(Reference.class, new KeyDeserializer() {
+
+            private static final Pattern REFERENCE_PATTERN = Pattern.compile("Reference\\[type=(.*?), id=(.*?)]");
+
+            @Override
+            public Object deserializeKey(String s, DeserializationContext deserializationContext) {
+                Matcher matcher = REFERENCE_PATTERN.matcher(s);
+                if (!matcher.matches()) {
+                    throw new RuntimeException("Pattern false!");
+                }
+                String typeString = matcher.group(1);
+                String idString = matcher.group(2);
+                ReferenceType type = ReferenceType.valueOf(typeString);
+                int id = Integer.parseInt(idString);
+                return new Reference(type, id);
+            }
+        });
+        jsonMapper.registerModule(simpleModule);
+        return jsonMapper;
     }
 
     private void listenToChanges() {
@@ -231,9 +264,6 @@ public class Document {
         drawing.setGraph(null);
 
         drawing.getPositions().clear();
-        drawing.getCompletionPositions().clear();
-        drawing.getQuantityPositions().clear();
-        drawing.getLinkCenters().clear();
 
         drawing.setNote("");
     }
