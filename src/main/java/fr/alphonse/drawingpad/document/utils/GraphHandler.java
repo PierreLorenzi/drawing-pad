@@ -46,7 +46,6 @@ public class GraphHandler {
         Graph newGraph = ModelStateManager.deepCopy(jsonGraph, Graph.class);
 
         // resolve references
-        fillLinkOutlets(newGraph);
         fillVertices(newGraph);
 
         model.setGraph(newGraph);
@@ -64,27 +63,16 @@ public class GraphHandler {
         model.setNote(json.getNote());
     }
 
-    private static void fillLinkOutlets(Graph graph) {
-        for (Link link : graph.getLinks()) {
-            link.setDirectFactor(DirectFactor.builder()
-                    .link(link)
-                    .build());
-            link.setReverseFactor(ReverseFactor.builder()
-                    .link(link)
-                    .build());
-        }
-    }
-
     private static void fillVertices(Graph graph) {
         for (Link link : graph.getLinks()) {
-            link.setOrigin(GraphHandler.findVertexAtReference(link.getOriginReference(), graph));
-            link.setDestination(GraphHandler.findVertexAtReference(link.getDestinationReference(), graph));
+            link.setOrigin(GraphHandler.findElementAtReference(link.getOriginReference(), graph));
+            link.setDestination(GraphHandler.findElementAtReference(link.getDestinationReference(), graph));
         }
         for (Completion completion: graph.getCompletions()) {
-            completion.setBase(GraphHandler.findVertexAtReference(completion.getBaseReference(), graph));
+            completion.setBase(GraphHandler.findElementAtReference(completion.getBaseReference(), graph));
         }
         for (Quantity quantity: graph.getQuantities()) {
-            quantity.setBase(GraphHandler.findVertexAtReference(quantity.getBaseReference(), graph));
+            quantity.setBase(GraphHandler.findElementAtReference(quantity.getBaseReference(), graph));
         }
     }
 
@@ -103,14 +91,13 @@ public class GraphHandler {
                 .build();
     }
 
-    public static Vertex findVertexAtReference(Reference reference, Graph graph) {
+    public static GraphElement findElementAtReference(Reference reference, Graph graph) {
         final int id = reference.id();
         return switch (reference.type()) {
             case OBJECT -> findGraphElementWithId(graph.getObjects(), id);
             case COMPLETION -> findGraphElementWithId(graph.getCompletions(), id);
             case QUANTITY -> findGraphElementWithId(graph.getQuantities(), id);
-            case DIRECT_LINK -> findGraphElementWithId(graph.getLinks(), id).getDirectFactor();
-            case REVERSE_LINK -> findGraphElementWithId(graph.getLinks(), id).getReverseFactor();
+            case LINK -> findGraphElementWithId(graph.getLinks(), id);
         };
     }
 
@@ -143,9 +130,9 @@ public class GraphHandler {
     private boolean areThereElementsWithoutDependencies(List<GraphElement> elements) {
         return elements.stream().anyMatch(element -> switch (element) {
             case Object ignored -> false;
-            case Completion completion -> !elements.contains(completion.getBase().getElement());
-            case Quantity quantity -> !elements.contains(quantity.getBase().getElement());
-            case Link link -> !elements.contains(link.getOrigin().getElement()) || !elements.contains(link.getDestination().getElement());
+            case Completion completion -> !elements.contains(completion.getBase());
+            case Quantity quantity -> !elements.contains(quantity.getBase());
+            case Link link -> !elements.contains(link.getOrigin()) || !elements.contains(link.getDestination());
         });
     }
 
@@ -198,14 +185,14 @@ public class GraphHandler {
 
     private static void correctVertexReferences(Graph graph) {
         for (Link link : graph.getLinks()) {
-            link.setOriginReference(new Reference(link.getOriginReference().type(), link.getOrigin().getElement().getId()));
-            link.setDestinationReference(new Reference(link.getDestinationReference().type(), link.getDestination().getElement().getId()));
+            link.setOriginReference(new Reference(link.getOriginReference().type(), link.getOrigin().getId()));
+            link.setDestinationReference(new Reference(link.getDestinationReference().type(), link.getDestination().getId()));
         }
         for (Completion completion: graph.getCompletions()) {
-            completion.setBaseReference(new Reference(completion.getBaseReference().type(), completion.getBase().getElement().getId()));
+            completion.setBaseReference(new Reference(completion.getBaseReference().type(), completion.getBase().getId()));
         }
         for (Quantity quantity: graph.getQuantities()) {
-            quantity.setBaseReference(new Reference(quantity.getBaseReference().type(), quantity.getBase().getElement().getId()));
+            quantity.setBaseReference(new Reference(quantity.getBaseReference().type(), quantity.getBase().getId()));
         }
     }
 }

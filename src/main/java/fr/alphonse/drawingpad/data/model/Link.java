@@ -1,6 +1,7 @@
 package fr.alphonse.drawingpad.data.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import fr.alphonse.drawingpad.data.model.reference.LinkDirection;
 import fr.alphonse.drawingpad.data.model.reference.Reference;
 import fr.alphonse.drawingpad.data.model.value.Value;
 import lombok.*;
@@ -15,23 +16,21 @@ public final class Link extends GraphElement {
 
     private Reference originReference;
 
+    // nullable
+    private LinkDirection originLinkDirection;
+
     private Reference destinationReference;
+
+    // nullable
+    private LinkDirection destinationLinkDirection;
 
     private Value factor;
 
     @JsonIgnore
     @ToString.Exclude
-    private DirectFactor directFactor;
+    private GraphElement origin;
 
     @JsonIgnore
     @ToString.Exclude
-    private ReverseFactor reverseFactor;
-
-    @JsonIgnore
-    @ToString.Exclude
-    private Vertex origin;
-
-    @JsonIgnore
-    @ToString.Exclude
-    private Vertex destination;
+    private GraphElement destination;
 }

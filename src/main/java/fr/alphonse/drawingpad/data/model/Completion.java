@@ -11,7 +11,7 @@ import lombok.experimental.SuperBuilder;
 @AllArgsConstructor
 @SuperBuilder
 @EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
-public final class Completion extends GraphElement implements Vertex {
+public final class Completion extends GraphElement {
 
     private Reference baseReference;
 
@@ -23,5 +23,5 @@ public final class Completion extends GraphElement implements Vertex {
 
     @JsonIgnore
     @ToString.Exclude
-    private Vertex base;
+    private GraphElement base;
 }

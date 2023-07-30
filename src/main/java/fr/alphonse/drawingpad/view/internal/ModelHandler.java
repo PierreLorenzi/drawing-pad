@@ -4,6 +4,7 @@ import fr.alphonse.drawingpad.data.Drawing;
 import fr.alphonse.drawingpad.data.geometry.Position;
 import fr.alphonse.drawingpad.data.model.Object;
 import fr.alphonse.drawingpad.data.model.*;
+import fr.alphonse.drawingpad.data.model.reference.LinkDirection;
 import fr.alphonse.drawingpad.data.model.reference.Reference;
 import fr.alphonse.drawingpad.data.model.reference.ReferenceType;
 import fr.alphonse.drawingpad.data.model.value.Value;
@@ -30,69 +31,68 @@ public class ModelHandler {
         return object;
     }
 
-    public static void addCompletion(Vertex base, Position position, Drawing drawing) {
+    public static void addCompletion(GraphElement base, Position position, Drawing drawing) {
         Completion completion = makeCompletion(base, drawing);
         drawing.getGraph().getCompletions().add(completion);
         drawing.getCompletionPositions().put(completion, position);
     }
 
-    private static Completion makeCompletion(Vertex base, Drawing drawing) {
+    private static Completion makeCompletion(GraphElement base, Drawing drawing) {
         var completion = new Completion();
         var id = GraphHandler.findAvailableId(drawing.getGraph().getCompletions());
         completion.setId(id);
         completion.setBase(base);
-        completion.setBaseReference(makeReferenceForVertex(base));
+        completion.setBaseReference(makeReferenceForElement(base));
         completion.setValue(new Value());
         completion.setLocalValue(new Value());
         return completion;
     }
 
-    public static void addQuantity(Vertex base, Position position, Drawing drawing) {
+    public static void addQuantity(GraphElement base, Position position, Drawing drawing) {
         Quantity quantity = makeQuantity(base, drawing);
         drawing.getGraph().getQuantities().add(quantity);
         drawing.getQuantityPositions().put(quantity, position);
     }
 
-    private static Quantity makeQuantity(Vertex base, Drawing drawing) {
+    private static Quantity makeQuantity(GraphElement base, Drawing drawing) {
         var quantity = new Quantity();
         var id = GraphHandler.findAvailableId(drawing.getGraph().getQuantities());
         quantity.setId(id);
         quantity.setBase(base);
-        quantity.setBaseReference(makeReferenceForVertex(base));
+        quantity.setBaseReference(makeReferenceForElement(base));
         quantity.setValue(new Value());
         quantity.setLocalValue(new Value());
         return quantity;
     }
 
-    public void addLink(Vertex origin, Vertex destination, Position center, Drawing drawing) {
-        Link link = makeLink(origin, destination, drawing);
+    public void addLink(GraphElement origin, LinkDirection originLinkDirection, GraphElement destination, LinkDirection destinationLinkDirection, Position center, Drawing drawing) {
+        Link link = makeLink(origin, originLinkDirection, destination, destinationLinkDirection, drawing);
         drawing.getGraph().getLinks().add(link);
         if (center != null) {
             drawing.getLinkCenters().put(link, center);
         }
     }
 
-    private static Link makeLink(Vertex origin, Vertex destination, Drawing drawing) {
+    private static Link makeLink(GraphElement origin, LinkDirection originLinkDirection, GraphElement destination, LinkDirection destinationLinkDirection, Drawing drawing) {
         var link = new Link();
         var id = GraphHandler.findAvailableId(drawing.getGraph().getLinks());
         link.setId(id);
         link.setOrigin(origin);
-        link.setOriginReference(makeReferenceForVertex(origin));
+        link.setOriginLinkDirection(originLinkDirection);
+        link.setOriginReference(makeReferenceForElement(origin));
         link.setDestination(destination);
-        link.setDestinationReference(makeReferenceForVertex(destination));
-        link.setDirectFactor(DirectFactor.builder().link(link).build());
-        link.setReverseFactor(ReverseFactor.builder().link(link).build());
+        link.setDestinationLinkDirection(destinationLinkDirection);
+        link.setDestinationReference(makeReferenceForElement(destination));
         link.setFactor(new Value());
         return link;
     }
 
-    private Reference makeReferenceForVertex(Vertex vertex) {
-        return switch (vertex) {
+    private Reference makeReferenceForElement(GraphElement element) {
+        return switch (element) {
             case Object object -> new Reference(ReferenceType.OBJECT, object.getId());
             case Completion completion -> new Reference(ReferenceType.COMPLETION, completion.getId());
             case Quantity quantity -> new Reference(ReferenceType.QUANTITY, quantity.getId());
-            case DirectFactor directFactor -> new Reference(ReferenceType.DIRECT_LINK, directFactor.getLink().getId());
-            case ReverseFactor reverseFactor -> new Reference(ReferenceType.REVERSE_LINK, reverseFactor.getLink().getId());
+            case Link link -> new Reference(ReferenceType.LINK, link.getId());
         };
     }
 
@@ -111,19 +111,19 @@ public class ModelHandler {
         List<GraphElement> elements = new ArrayList<>();
 
         for (Completion completion: drawing.getGraph().getCompletions()) {
-            if (completion.getBase().getElement() == element) {
+            if (completion.getBase() == element) {
                 elements.addAll(listDependentElements(completion, drawing));
                 elements.add(completion);
             }
         }
         for (Quantity quantity: drawing.getGraph().getQuantities()) {
-            if (quantity.getBase().getElement() == element) {
+            if (quantity.getBase() == element) {
                 elements.addAll(listDependentElements(quantity, drawing));
                 elements.add(quantity);
             }
         }
         for (Link link : drawing.getGraph().getLinks()) {
-            if (link.getOrigin().getElement() == element || link.getDestination().getElement() == element) {
+            if (link.getOrigin() == element || link.getDestination() == element) {
                 elements.addAll(listDependentElements(link, drawing));
                 elements.add(link);
             }
