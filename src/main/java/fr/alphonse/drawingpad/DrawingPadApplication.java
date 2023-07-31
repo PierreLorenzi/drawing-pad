@@ -137,11 +137,10 @@ public class DrawingPadApplication {
     }
 
     private static void openDocument() {
-        Path path = DocumentUtils.chooseFile(null, JFileChooser.OPEN_DIALOG);
-        if (path == null) {
-            return;
+        List<Path> paths = DocumentUtils.chooseFiles(null, JFileChooser.OPEN_DIALOG);
+        for (Path path: paths) {
+            openDocumentAtPath(path);
         }
-        openDocumentAtPath(path);
     }
 
     private static void openDocumentAtPath(Path path) {

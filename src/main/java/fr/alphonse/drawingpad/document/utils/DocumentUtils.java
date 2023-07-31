@@ -4,8 +4,10 @@ import lombok.experimental.UtilityClass;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.prefs.Preferences;
 
@@ -40,6 +42,27 @@ public class DocumentUtils {
         }
         else {
             return null;
+        }
+    }
+
+    public static List<Path> chooseFiles(JFrame frame, int mode) {
+        var chooser = new JFileChooser();
+        chooser.setFileSelectionMode(mode);
+        FileNameExtensionFilter filter = new FileNameExtensionFilter(
+                "JSON", "json");
+        chooser.setFileFilter(filter);
+        chooser.setCurrentDirectory(findFileDialogPath().toFile());
+        chooser.setMultiSelectionEnabled(true);
+        int returnVal = ((mode & JFileChooser.SAVE_DIALOG) != 0) ? chooser.showSaveDialog(frame) : chooser.showOpenDialog(frame);
+        if(returnVal == JFileChooser.APPROVE_OPTION) {
+            File[] files = chooser.getSelectedFiles();
+            saveDialogPath(files[0].toPath());
+            return Arrays.stream(files)
+                    .map(File::toPath)
+                    .toList();
+        }
+        else {
+            return List.of();
         }
     }
 
