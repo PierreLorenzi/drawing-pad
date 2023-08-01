@@ -80,7 +80,7 @@ public class DrawingComponent extends JComponent {
 
     private static final int OBJECT_RECTANGLE_RADIUS = 8;
 
-    private static final float ARROW_DISTANCE = 20;
+    private static final float ARROW_DISTANCE = 28;
 
     private static final double ARROW_ANGLE = Math.toRadians(25);
 
@@ -90,7 +90,9 @@ public class DrawingComponent extends JComponent {
 
     private static final BasicStroke SELECTED_LINK_STROKE = new BasicStroke(3);
 
-    private static final BasicStroke LINK_STROKE = new BasicStroke(1);
+    private static final BasicStroke LINK_STROKE = new BasicStroke(2);
+
+    private static final Color LINK_COLOR = new Color(70, 70, 70);
 
     private final static float[] BASE_LINE_DASH = new float[]{1.0f, 2.0f};
 
@@ -362,11 +364,11 @@ public class DrawingComponent extends JComponent {
         drawLinkBetweenPositions(linePosition1, center, linePosition2, g, isSelected);
         if (Graduations.isStrictlyGreaterThanOne(link.getFactor().getGraduation())) {
             Position secondPosition = (center != null) ? center : position2;
-            drawArrow(linePosition1, secondPosition, g);
+            drawArrow(position1, secondPosition, g);
         }
         else if (Graduations.isStrictlyLesserThanOne(link.getFactor().getGraduation())) {
             Position secondPosition = (center != null) ? center : position1;
-            drawArrow(linePosition2, secondPosition, g);
+            drawArrow(position2, secondPosition, g);
         }
     }
 
@@ -376,7 +378,7 @@ public class DrawingComponent extends JComponent {
             ((Graphics2D) g).setStroke(SELECTED_LINK_STROKE);
         }
         else {
-            g.setColor(Color.BLACK);
+            g.setColor(LINK_COLOR);
             ((Graphics2D) g).setStroke(LINK_STROKE);
         }
         if (center != null) {
