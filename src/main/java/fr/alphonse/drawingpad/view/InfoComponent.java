@@ -13,6 +13,7 @@ import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.util.function.Consumer;
 
 public class InfoComponent extends JPanel {
 
@@ -169,14 +170,12 @@ public class InfoComponent extends JPanel {
 
     private JPanel makeObjectSelectionView() {
         JPanel panel = makeInfoPanel();
-        JTextField nameField = makeNameField(panel);
-        nameField.addActionListener(event -> {if (this.selectedObject != null) {
-            this.selectedObject.setName(nameField.getText());
-            changeNameVisible(selectedObject, !nameField.getText().isEmpty());
-            objectNameVisibleCheckBox.setSelected(!nameField.getText().isEmpty());
+        this.objectNameField = makeNameField(panel, text -> {if (this.selectedObject != null) {
+            this.selectedObject.setName(text);
+            changeNameVisible(selectedObject, !text.isEmpty());
+            objectNameVisibleCheckBox.setSelected(!text.isEmpty());
             this.modelChangeDetector.notifyChangeCausedBy(InfoComponent.this);
         }});
-        this.objectNameField = nameField;
 
         JCheckBox nameVisibleCheckBox = makeNameVisibleCheckBox(panel);
         nameVisibleCheckBox.addActionListener(event -> {
@@ -198,7 +197,7 @@ public class InfoComponent extends JPanel {
         return panel;
     }
 
-    private JTextField makeNameField(JPanel panel) {
+    private JTextField makeNameField(JPanel panel, Consumer<String> action) {
 
         // name
         JLabel nameLabel = new JLabel("Name:");
@@ -209,6 +208,18 @@ public class InfoComponent extends JPanel {
         textField.setMaximumSize(new Dimension(100000, 40));
         panel.add(textField);
         panel.add(Box.createVerticalGlue());
+        textField.addActionListener(e -> action.accept(textField.getText()));
+        textField.addFocusListener(new FocusListener() {
+            @Override
+            public void focusGained(FocusEvent e) {
+
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                action.accept(textField.getText());
+            }
+        });
 
         return textField;
     }
@@ -226,7 +237,7 @@ public class InfoComponent extends JPanel {
     }
 
     private void changeNameVisible(GraphElement element, boolean newValue) {
-        if (newValue) {
+        if (newValue && model.getNamePositions().get(element) == null) {
             Vector shift = switch (element) {
                 case Object ignored -> OBJECT_NAME_SHIFT;
                 case Completion ignored -> CIRCLE_NAME_SHIFT;
@@ -235,21 +246,19 @@ public class InfoComponent extends JPanel {
             };
             model.getNamePositions().put(element, shift);
         }
-        else {
+        else if (!newValue && model.getNamePositions().get(element) != null) {
             model.getNamePositions().remove(element);
         }
     }
 
     private JPanel makeCompletionSelectionView() {
         JPanel panel = makeInfoPanel();
-        JTextField nameField = makeNameField(panel);
-        nameField.addActionListener(event -> {if (this.selectedCompletion != null) {
-            this.selectedCompletion.setName(nameField.getText());
-            changeNameVisible(selectedCompletion, !nameField.getText().isEmpty());
-            completionNameVisibleCheckBox.setSelected(!nameField.getText().isEmpty());
+        this.completionNameField = makeNameField(panel, text -> {if (this.selectedCompletion != null) {
+            this.selectedCompletion.setName(text);
+            changeNameVisible(selectedCompletion, !text.isEmpty());
+            completionNameVisibleCheckBox.setSelected(!text.isEmpty());
             this.modelChangeDetector.notifyChangeCausedBy(InfoComponent.this);
         }});
-        this.completionNameField = nameField;
 
         JCheckBox nameVisibleCheckBox = makeNameVisibleCheckBox(panel);
         nameVisibleCheckBox.addActionListener(event -> {
@@ -283,14 +292,12 @@ public class InfoComponent extends JPanel {
 
     private JPanel makeQuantitySelectionView() {
         JPanel panel = makeInfoPanel();
-        JTextField nameField = makeNameField(panel);
-        nameField.addActionListener(event -> {if (this.selectedQuantity != null) {
-            this.selectedQuantity.setName(nameField.getText());
-            changeNameVisible(selectedQuantity, !nameField.getText().isEmpty());
-            quantityNameVisibleCheckBox.setSelected(!nameField.getText().isEmpty());
+        this.quantityNameField = makeNameField(panel, text -> {if (this.selectedQuantity != null) {
+            this.selectedQuantity.setName(text);
+            changeNameVisible(selectedQuantity, !text.isEmpty());
+            quantityNameVisibleCheckBox.setSelected(!text.isEmpty());
             this.modelChangeDetector.notifyChangeCausedBy(InfoComponent.this);
         }});
-        this.quantityNameField = nameField;
 
         JCheckBox nameVisibleCheckBox = makeNameVisibleCheckBox(panel);
         nameVisibleCheckBox.addActionListener(event -> {
@@ -325,14 +332,12 @@ public class InfoComponent extends JPanel {
     private JPanel makeLinkSelectionView() {
         JPanel panel = makeInfoPanel();
 
-        JTextField nameField = makeNameField(panel);
-        nameField.addActionListener(event -> {if (this.selectedLink != null) {
-            this.selectedLink.setName(nameField.getText());
-            changeNameVisible(selectedLink, !nameField.getText().isEmpty());
-            linkNameVisibleCheckBox.setSelected(!nameField.getText().isEmpty());
+        this.linkNameField = makeNameField(panel, text -> {if (this.selectedLink != null) {
+            this.selectedLink.setName(text);
+            changeNameVisible(selectedLink, !text.isEmpty());
+            linkNameVisibleCheckBox.setSelected(!text.isEmpty());
             this.modelChangeDetector.notifyChangeCausedBy(InfoComponent.this);
         }});
-        this.linkNameField = nameField;
 
         JCheckBox nameVisibleCheckBox = makeNameVisibleCheckBox(panel);
         nameVisibleCheckBox.addActionListener(event -> {
