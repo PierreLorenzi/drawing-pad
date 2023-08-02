@@ -5,6 +5,7 @@ import fr.alphonse.drawingpad.data.geometry.Position;
 import fr.alphonse.drawingpad.data.model.Object;
 import fr.alphonse.drawingpad.data.model.*;
 import fr.alphonse.drawingpad.data.model.reference.LinkDirection;
+import fr.alphonse.drawingpad.data.model.value.Graduation;
 import fr.alphonse.drawingpad.data.model.value.Value;
 import fr.alphonse.drawingpad.document.utils.GraphHandler;
 import lombok.experimental.UtilityClass;
@@ -15,10 +16,11 @@ import java.util.stream.Stream;
 @UtilityClass
 public class ModelHandler {
 
-    public static void addObject(Position position, Drawing drawing) {
+    public static Object addObject(Position position, Drawing drawing) {
         Object object = makeObject(drawing);
         drawing.getElements().add(object);
         drawing.getPositions().put(object, position);
+        return object;
     }
 
     private static Object makeObject(Drawing drawing) {
@@ -62,15 +64,15 @@ public class ModelHandler {
         return quantity;
     }
 
-    public void addLink(GraphElement origin, LinkDirection originLinkDirection, GraphElement destination, LinkDirection destinationLinkDirection, Position center, Drawing drawing) {
-        Link link = makeLink(origin, originLinkDirection, destination, destinationLinkDirection, drawing);
+    public void addLink(GraphElement origin, LinkDirection originLinkDirection, GraphElement destination, LinkDirection destinationLinkDirection, Position center, Graduation graduation, Drawing drawing) {
+        Link link = makeLink(origin, originLinkDirection, destination, destinationLinkDirection, graduation, drawing);
         drawing.getElements().add(link);
         if (center != null) {
             drawing.getPositions().put(link, center);
         }
     }
 
-    private static Link makeLink(GraphElement origin, LinkDirection originLinkDirection, GraphElement destination, LinkDirection destinationLinkDirection, Drawing drawing) {
+    private static Link makeLink(GraphElement origin, LinkDirection originLinkDirection, GraphElement destination, LinkDirection destinationLinkDirection, Graduation graduation, Drawing drawing) {
         var link = new Link();
         var id = GraphHandler.findAvailableId(drawing.getElements());
         link.setId(id);
@@ -80,7 +82,9 @@ public class ModelHandler {
         link.setDestination(destination);
         link.setDestinationLinkDirection(destinationLinkDirection);
         link.setDestinationId(destination.getId());
-        link.setFactor(new Value());
+        link.setFactor(Value.builder()
+                .graduation(graduation)
+                .build());
         return link;
     }
 

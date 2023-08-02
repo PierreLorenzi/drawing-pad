@@ -6,6 +6,10 @@ public record Vector(int x, int y) {
         return new Vector(p2.x() - p1.x(), p2.y() - p1.y());
     }
 
+    public static Vector between(Vector p1, Vector p2) {
+        return new Vector(p2.x() - p1.x(), p2.y() - p1.y());
+    }
+
     public static int scalarProduct(Vector v1, Vector v2) {
         return v1.x() * v2.x() + v1.y() * v2.y();
     }

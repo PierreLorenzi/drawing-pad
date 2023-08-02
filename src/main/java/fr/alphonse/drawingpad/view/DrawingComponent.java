@@ -2,10 +2,12 @@ package fr.alphonse.drawingpad.view;
 
 import fr.alphonse.drawingpad.data.Drawing;
 import fr.alphonse.drawingpad.data.geometry.Position;
+import fr.alphonse.drawingpad.data.geometry.Rectangle;
 import fr.alphonse.drawingpad.data.geometry.Vector;
 import fr.alphonse.drawingpad.data.model.Object;
 import fr.alphonse.drawingpad.data.model.*;
 import fr.alphonse.drawingpad.data.model.reference.LinkDirection;
+import fr.alphonse.drawingpad.data.model.value.Graduation;
 import fr.alphonse.drawingpad.document.utils.ChangeDetector;
 import fr.alphonse.drawingpad.document.utils.Graduations;
 import fr.alphonse.drawingpad.document.utils.GraphHandler;
@@ -57,6 +59,10 @@ public class DrawingComponent extends JComponent {
     private LinkDirection newOriginLinkDirection = null;
 
     private Position newLinkCenter = null;
+
+    private Graduation newLinkGraduation;
+
+    private boolean mustLinkBeAligned = false;
 
     private Link draggedCenterLink = null;
 
@@ -162,7 +168,7 @@ public class DrawingComponent extends JComponent {
 
             @Override
             public void mouseMoved(MouseEvent e) {
-                DrawingComponent.this.reactToMove();
+                DrawingComponent.this.reactToMove(e);
             }
         });
         addKeyListener(new KeyListener() {
@@ -252,10 +258,7 @@ public class DrawingComponent extends JComponent {
 
         // draw link being dragged
         if (newLinkOrigin != null) {
-            var position1 = geometryManager.findVertexPosition(newLinkOrigin, newOriginLinkDirection);
-            Position position2 = findMousePosition();
-            var linePosition1 = geometryManager.computeArrowMeetingPositionWithElement(newLinkCenter != null ? newLinkCenter : position2, position1, newLinkOrigin);
-            drawLinkBetweenPositions(linePosition1, newLinkCenter, position2, g, false);
+            drawLinkBeingDragged(g);
         }
 
         // save metrics
@@ -390,13 +393,6 @@ public class DrawingComponent extends JComponent {
         }
     }
 
-    private Position findMousePosition() {
-        Point mousePoint = MouseInfo.getPointerInfo().getLocation();
-        Point point = new Point(mousePoint);
-        SwingUtilities.convertPointFromScreen(point, this);
-        return findPointPosition(point);
-    }
-
     private void drawArrow(Position origin, Position destination, Graphics g) {
         Vector lineVector = Vector.between(origin, destination);
         Vector arrowBaseVector = lineVector.multiply(ARROW_DISTANCE / lineVector.length());
@@ -411,6 +407,66 @@ public class DrawingComponent extends JComponent {
         g.drawLine(arrowBase.x(), arrowBase.y(), arrowPosition2.x(), arrowPosition2.y());
     }
 
+    private void drawLinkBeingDragged(Graphics g) {
+        var position1 = geometryManager.findVertexPosition(newLinkOrigin, newOriginLinkDirection);
+        Position position2 = findMousePosition();
+        if (mustLinkBeAligned) {
+            position2 = alignOnPosition(position2, position1);
+        }
+        else {
+            position2 = shiftDestinationForLinkShapeMagnetism(position1, position2);
+        }
+        var linePosition1 = geometryManager.computeArrowMeetingPositionWithElement(newLinkCenter != null ? newLinkCenter : position2, position1, newLinkOrigin);
+        drawLinkBetweenPositions(linePosition1, newLinkCenter, position2, g, false);
+    }
+
+    private static Position alignOnPosition(Position position, Position basePosition) {
+        Vector vector = Vector.between(basePosition, position);
+        if (Math.abs(vector.x()) >= Math.abs(vector.y())) {
+            return new Position(position.x(), basePosition.y());
+        }
+        else {
+            return new Position(basePosition.x(), position.y());
+        }
+    }
+
+    private Position findMousePosition() {
+        Point mousePoint = MouseInfo.getPointerInfo().getLocation();
+        Point point = new Point(mousePoint);
+        SwingUtilities.convertPointFromScreen(point, this);
+        return findPointPosition(point);
+    }
+
+    private Position shiftDestinationForLinkShapeMagnetism(Position source, Position destination) {
+        List<Vector> linkVectors = model.getElements().stream()
+                .filter(Link.class::isInstance)
+                .map(Link.class::cast)
+                .map(this::computeLinkVectorIfChosenByUser)
+                .filter(Objects::nonNull)
+                .toList();
+        Vector draggedVector = Vector.between(source, destination);
+        Vector magnetismShift = linkVectors.stream()
+                .flatMap(vector -> Stream.of(Vector.between(draggedVector, vector), Vector.between(draggedVector, new Vector(-vector.x(), vector.y()))))
+                .filter(vector -> vector.length() < 30)
+                .min(Comparator.comparing(Vector::length))
+                .orElse(null);
+        if (magnetismShift == null) {
+            return destination;
+        }
+        return destination.translate(magnetismShift);
+    }
+
+    private Vector computeLinkVectorIfChosenByUser(Link link) {
+        GraphElement origin = link.getOrigin();
+        GraphElement destination = link.getDestination();
+        Position position1 = model.getPositions().get(origin);
+        Position position2 = model.getPositions().get(destination);
+        if (position1 == null || position2 == null) {
+            return null;
+        }
+        return Vector.between(position1, position2);
+    }
+
     private void reactToClick(MouseEvent event) {
         Position position = findEventPosition(event);
         clickPosition = position;
@@ -419,26 +475,34 @@ public class DrawingComponent extends JComponent {
         if (this.newLinkOrigin != null) {
             this.repaint();
             if (clickedElement == null) {
-                this.newLinkCenter = position;
-                return;
+                if (isCommandPressedDuringEvent(event)) {
+                    var magneticPosition = shiftDestinationForLinkShapeMagnetism(geometryManager.findElementPosition(this.newLinkOrigin), position);
+                    clickedElement = ModelHandler.addObject(magneticPosition, model);
+                }
+                else {
+                    this.newLinkCenter = position;
+                    return;
+                }
             }
             var origin = this.newLinkOrigin;
             var originLinkDirection = this.newOriginLinkDirection;
             var center = this.newLinkCenter;
+            var graduation = this.newLinkGraduation;
             this.newLinkOrigin = null;
             this.newOriginLinkDirection = null;
             this.newLinkCenter = null;
+            this.newLinkGraduation = null;
             this.repaint();
             if (clickedElement == origin) {
                 return;
             }
             LinkDirection destinationLinkDirection = geometryManager.findLinkDirectionAtPosition(clickedElement, position);
-            ModelHandler.addLink(origin, originLinkDirection, clickedElement, destinationLinkDirection, center, model);
+            ModelHandler.addLink(origin, originLinkDirection, clickedElement, destinationLinkDirection, center, graduation, model);
             changeDetector.notifyChangeCausedBy(this);
             return;
         }
         // if press with command, add object or link
-        if ((event.getModifiersEx() & Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()) != 0) {
+        if (isCommandPressedDuringEvent(event)) {
             if (clickedElement == null) {
                 ModelHandler.addObject(position, model);
                 changeDetector.notifyChangeCausedBy(this);
@@ -447,11 +511,12 @@ public class DrawingComponent extends JComponent {
             else {
                 newLinkOrigin = clickedElement;
                 newOriginLinkDirection = geometryManager.findLinkDirectionAtPosition(clickedElement, position);
+                newLinkGraduation = isOptionKeyPressedDuringEvent(event) ? null : Graduation.GREATER;
             }
             return;
         }
         // if press with option, add completion
-        if ((event.getModifiersEx() & MouseEvent.ALT_DOWN_MASK) != 0) {
+        if (isOptionKeyPressedDuringEvent(event)) {
             if (clickedElement == null) {
                 return;
             }
@@ -472,7 +537,7 @@ public class DrawingComponent extends JComponent {
             repaint();
             return;
         }
-        boolean isShiftKeyPressed = (event.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) != 0;
+        boolean isShiftKeyPressed = isShiftKeyPressed(event);
         // name drag
         if (!isShiftKeyPressed && clickedElement == null) {
             GraphElement element = findElementWhoseNameContainsPosition(position);
@@ -524,6 +589,18 @@ public class DrawingComponent extends JComponent {
         this.repaint();
     }
 
+    private static boolean isShiftKeyPressed(MouseEvent event) {
+        return (event.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) != 0;
+    }
+
+    private static boolean isCommandPressedDuringEvent(MouseEvent event) {
+        return (event.getModifiersEx() & Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()) != 0;
+    }
+
+    private static boolean isOptionKeyPressedDuringEvent(MouseEvent event) {
+        return (event.getModifiersEx() & MouseEvent.ALT_DOWN_MASK) != 0;
+    }
+
     private Position findEventPosition(MouseEvent event) {
         return findPointPosition(event.getPoint());
     }
@@ -547,15 +624,20 @@ public class DrawingComponent extends JComponent {
                 continue;
             }
             Position namePosition = computeNamePositionOfElement(element);
-            int width = nameFontMetrics.stringWidth(name);
-            int ascent = nameFontMetrics.getAscent();
-            int descent = nameFontMetrics.getDescent();
-            if (position.x() >= namePosition.x() - NAME_MARGIN && position.x() <= namePosition.x() + width + NAME_MARGIN &&
-            position.y() >= namePosition.y() - ascent - NAME_MARGIN && position.y() <= namePosition.y() + descent + NAME_MARGIN) {
+            Rectangle titleRectangle = findRectangleOfNameAtPosition(name, namePosition);
+            Rectangle clickableTitleRectangle = titleRectangle.increaseByMargin(NAME_MARGIN);
+            if (clickableTitleRectangle.containsPosition(position)) {
                 return element;
             }
         }
         return null;
+    }
+
+    private Rectangle findRectangleOfNameAtPosition(String name, Position position) {
+        int width = nameFontMetrics.stringWidth(name);
+        int ascent = nameFontMetrics.getAscent();
+        int descent = nameFontMetrics.getDescent();
+        return new Rectangle(position.x(), position.y() - ascent, width, ascent + descent);
     }
 
     private Position findLinkCenter(Link link) {
@@ -626,6 +708,11 @@ public class DrawingComponent extends JComponent {
         }
         if (this.draggedNameElement != null) {
             Position newNamePosition = position.translate(this.draggedNameRelativePosition);
+            Rectangle nameRectangle = findRectangleOfNameAtPosition(this.draggedNameElement.getName(), newNamePosition);
+            Position nameCenter = nameRectangle.findCenter();
+            Position elementPosition = geometryManager.findElementPosition(this.draggedNameElement);
+            Vector shift = applyMagneticShift(List.of(nameCenter), List.of(elementPosition));
+            newNamePosition = newNamePosition.translate(shift);
             Vector newNameRelativePosition = Vector.between(this.draggedNameCenter, newNamePosition);
             this.model.getNamePositions().put(this.draggedNameElement, newNameRelativePosition);
             this.repaint();
@@ -679,7 +766,6 @@ public class DrawingComponent extends JComponent {
     }
 
     private void updateMagneticGuides() {
-        this.clearGuides();
         List<Position> draggedPositions = dragRelativeVectors.keySet().stream()
                 .filter(element -> !(element instanceof Link))
                 .map(geometryManager::findElementPosition)
@@ -689,16 +775,23 @@ public class DrawingComponent extends JComponent {
                 .filter(element -> dragRelativeVectors.get(element) == null)
                 .map(geometryManager::findElementPosition)
                 .toList();
+        Vector shift = applyMagneticShift(draggedPositions, otherPositions);
+        if (shift.length() == 0) return;
+        applyMagneticShiftToDraggedElements(shift);
+    }
+
+    private Vector applyMagneticShift(List<Position> draggedPositions, List<Position> otherPositions) {
+        this.clearGuides();
         Integer nearbyGuideDeltaX = findPossibleGuideAndComputeDelta(draggedPositions, otherPositions, Position::x);
         Integer nearbyGuideDeltaY = findPossibleGuideAndComputeDelta(draggedPositions, otherPositions, Position::y);
         if (nearbyGuideDeltaX == null && nearbyGuideDeltaY == null) {
-            return;
+            return new Vector(0, 0);
         }
         int deltaX = nearbyGuideDeltaX == null ? 0 : nearbyGuideDeltaX;
         int deltaY = nearbyGuideDeltaY == null ? 0 : nearbyGuideDeltaY;
         Vector shift = new Vector(deltaX, deltaY);
         fillGuides(draggedPositions, shift, otherPositions);
-        applyMagneticShiftToDraggedElements(shift);
+        return shift;
     }
 
     private Integer findPossibleGuideAndComputeDelta(List<Position> draggedPositions, List<Position> otherPositions, Function<Position, Integer> coordinate) {
@@ -746,9 +839,10 @@ public class DrawingComponent extends JComponent {
         this.guidesY.clear();
     }
 
-    private void reactToMove() {
+    private void reactToMove(MouseEvent e) {
         // if a new linked is dragged, repaint
         if (newLinkOrigin != null) {
+            this.mustLinkBeAligned = isShiftKeyPressed(e);
             this.repaint();
         }
     }

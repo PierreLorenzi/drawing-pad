@@ -72,7 +72,11 @@ public class InfoComponent extends JPanel {
 
     private static final String LINK_SELECTION_CARD = "link";
 
-    private final static Vector ELEMENT_NAME_SHIFT = new Vector(14, 5);
+    private final static Vector OBJECT_NAME_SHIFT = new Vector(14, 5);
+
+    private final static Vector CIRCLE_NAME_SHIFT = new Vector(10, 4);
+
+    private final static Vector LINK_NAME_SHIFT = new Vector(0, -6);
 
     public InfoComponent(java.util.List<GraphElement> selection, ChangeDetector<?,?> selectionChangeDetector, ChangeDetector<?,?> modelChangeDetector, Drawing model) {
         super();
@@ -168,6 +172,8 @@ public class InfoComponent extends JPanel {
         JTextField nameField = makeNameField(panel);
         nameField.addActionListener(event -> {if (this.selectedObject != null) {
             this.selectedObject.setName(nameField.getText());
+            changeNameVisible(selectedObject, !nameField.getText().isEmpty());
+            objectNameVisibleCheckBox.setSelected(!nameField.getText().isEmpty());
             this.modelChangeDetector.notifyChangeCausedBy(InfoComponent.this);
         }});
         this.objectNameField = nameField;
@@ -221,7 +227,13 @@ public class InfoComponent extends JPanel {
 
     private void changeNameVisible(GraphElement element, boolean newValue) {
         if (newValue) {
-            model.getNamePositions().put(element, ELEMENT_NAME_SHIFT);
+            Vector shift = switch (element) {
+                case Object ignored -> OBJECT_NAME_SHIFT;
+                case Completion ignored -> CIRCLE_NAME_SHIFT;
+                case Quantity ignored -> CIRCLE_NAME_SHIFT;
+                case Link ignored -> LINK_NAME_SHIFT;
+            };
+            model.getNamePositions().put(element, shift);
         }
         else {
             model.getNamePositions().remove(element);
@@ -233,6 +245,8 @@ public class InfoComponent extends JPanel {
         JTextField nameField = makeNameField(panel);
         nameField.addActionListener(event -> {if (this.selectedCompletion != null) {
             this.selectedCompletion.setName(nameField.getText());
+            changeNameVisible(selectedCompletion, !nameField.getText().isEmpty());
+            completionNameVisibleCheckBox.setSelected(!nameField.getText().isEmpty());
             this.modelChangeDetector.notifyChangeCausedBy(InfoComponent.this);
         }});
         this.completionNameField = nameField;
@@ -272,6 +286,8 @@ public class InfoComponent extends JPanel {
         JTextField nameField = makeNameField(panel);
         nameField.addActionListener(event -> {if (this.selectedQuantity != null) {
             this.selectedQuantity.setName(nameField.getText());
+            changeNameVisible(selectedQuantity, !nameField.getText().isEmpty());
+            quantityNameVisibleCheckBox.setSelected(!nameField.getText().isEmpty());
             this.modelChangeDetector.notifyChangeCausedBy(InfoComponent.this);
         }});
         this.quantityNameField = nameField;
@@ -312,6 +328,8 @@ public class InfoComponent extends JPanel {
         JTextField nameField = makeNameField(panel);
         nameField.addActionListener(event -> {if (this.selectedLink != null) {
             this.selectedLink.setName(nameField.getText());
+            changeNameVisible(selectedLink, !nameField.getText().isEmpty());
+            linkNameVisibleCheckBox.setSelected(!nameField.getText().isEmpty());
             this.modelChangeDetector.notifyChangeCausedBy(InfoComponent.this);
         }});
         this.linkNameField = nameField;

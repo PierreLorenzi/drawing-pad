@@ -87,8 +87,9 @@ public class Document {
             return;
         }
         wasModifiedSinceLastSave = newValue;
-        String displayName = (wasModifiedSinceLastSave ? windowName + "*" : windowName);
-        frame.setTitle(displayName);
+        var name = findWindowName();
+        String newName = (wasModifiedSinceLastSave ? name + "*" : name);
+        frame.setTitle(newName);
     }
 
     public void addCloseListener(Consumer<JFrame> callback) {
