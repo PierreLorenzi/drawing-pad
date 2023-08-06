@@ -57,7 +57,6 @@ public class GraphHandler {
             switch (element) {
                 case Object ignored -> doNothing();
                 case Completion completion -> completion.setBase(GraphHandler.findElementWithId(completion.getBaseId(), elements));
-                case Quantity quantity -> quantity.setBase(GraphHandler.findElementWithId(quantity.getBaseId(), elements));
                 case Link link -> {
                     link.setOrigin(GraphHandler.findElementWithId(link.getOriginId(), elements));
                     link.setDestination(GraphHandler.findElementWithId(link.getDestinationId(), elements));
@@ -105,7 +104,6 @@ public class GraphHandler {
         return elements.stream().anyMatch(element -> switch (element) {
             case Object ignored -> false;
             case Completion completion -> !elements.contains(completion.getBase());
-            case Quantity quantity -> !elements.contains(quantity.getBase());
             case Link link -> !elements.contains(link.getOrigin()) || !elements.contains(link.getDestination());
         });
     }
@@ -154,7 +152,6 @@ public class GraphHandler {
             switch (element) {
                 case Object ignored -> doNothing();
                 case Completion completion -> completion.setBaseId(completion.getBase().getId());
-                case Quantity quantity -> quantity.setBaseId(quantity.getBase().getId());
                 case Link link -> {
                     link.setOriginId(link.getOrigin().getId());
                     link.setDestinationId(link.getDestination().getId());

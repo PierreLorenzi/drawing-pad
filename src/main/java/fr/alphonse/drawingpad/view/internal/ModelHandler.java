@@ -43,25 +43,7 @@ public class ModelHandler {
         completion.setBase(base);
         completion.setBaseId(base.getId());
         completion.setValue(new Value());
-        completion.setLocalValue(new Value());
         return completion;
-    }
-
-    public static void addQuantity(GraphElement base, Position position, Drawing drawing) {
-        Quantity quantity = makeQuantity(base, drawing);
-        drawing.getElements().add(quantity);
-        drawing.getPositions().put(quantity, position);
-    }
-
-    private static Quantity makeQuantity(GraphElement base, Drawing drawing) {
-        var quantity = new Quantity();
-        var id = GraphHandler.findAvailableId(drawing.getElements());
-        quantity.setId(id);
-        quantity.setBase(base);
-        quantity.setBaseId(base.getId());
-        quantity.setValue(new Value());
-        quantity.setLocalValue(new Value());
-        return quantity;
     }
 
     public void addLink(GraphElement origin, LinkDirection originLinkDirection, GraphElement destination, LinkDirection destinationLinkDirection, Position center, Graduation graduation, Drawing drawing) {
@@ -110,7 +92,6 @@ public class ModelHandler {
         return switch (element) {
             case Object ignored -> false;
             case Completion completion -> completion.getBase() == base;
-            case Quantity quantity -> quantity.getBase() == base;
             case Link link -> link.getOrigin() == base || link.getDestination() == base;
         };
     }

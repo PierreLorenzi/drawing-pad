@@ -20,7 +20,7 @@ public class GeometryManager {
     public static final int CIRCLE_RADIUS = 6;
 
     // the element types in the order they are displayed
-    public static final List<Class<? extends GraphElement>> DISPLAYED_ELEMENT_TYPES = List.of(Link.class, Completion.class, Quantity.class, Object.class);
+    public static final List<Class<? extends GraphElement>> DISPLAYED_ELEMENT_TYPES = List.of(Link.class, Completion.class, Object.class);
 
     public GeometryManager(Drawing model) {
         this.model = model;
@@ -81,7 +81,6 @@ public class GeometryManager {
         return switch (element) {
             case Object ignored -> computeArrowMeetingPositionWithObject(position1, position2);
             case Completion ignored -> computeArrowMeetingPositionWithCircle(position1, position2);
-            case Quantity ignored -> computeArrowMeetingPositionWithCircle(position1, position2);
             case Link ignored -> position2;
         };
     }

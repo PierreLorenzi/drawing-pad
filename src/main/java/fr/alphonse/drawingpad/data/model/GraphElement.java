@@ -17,10 +17,9 @@ import lombok.experimental.SuperBuilder;
 @JsonSubTypes({
         @JsonSubTypes.Type(value = Object.class),
         @JsonSubTypes.Type(value = Completion.class),
-        @JsonSubTypes.Type(value = Quantity.class),
         @JsonSubTypes.Type(value = Link.class)
 })
-public abstract sealed class GraphElement permits Object, Completion, Quantity, Link {
+public abstract sealed class GraphElement permits Object, Completion, Link {
 
     public Integer id;
 

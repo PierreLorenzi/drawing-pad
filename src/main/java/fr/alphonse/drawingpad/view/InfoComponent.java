@@ -41,18 +41,6 @@ public class InfoComponent extends JPanel {
 
     private GraduatedValueComponent completionValueComponent;
 
-    private GraduatedValueComponent completionLocalValueComponent;
-
-    private Quantity selectedQuantity = null;
-
-    private JCheckBox quantityNameVisibleCheckBox;
-
-    private JTextField quantityNameField;
-
-    private GraduatedValueComponent quantityValueComponent;
-
-    private GraduatedValueComponent quantityLocalValueComponent;
-
     private Link selectedLink = null;
 
     private JTextField linkNameField;
@@ -68,8 +56,6 @@ public class InfoComponent extends JPanel {
     private static final String OBJECT_SELECTION_CARD = "object";
 
     private static final String COMPLETION_SELECTION_CARD = "completion";
-
-    private static final String QUANTITY_SELECTION_CARD = "quantity";
 
     private static final String LINK_SELECTION_CARD = "link";
 
@@ -93,7 +79,6 @@ public class InfoComponent extends JPanel {
         add(makeMultipleSelectionView(), MULTIPLE_SELECTION_CARD);
         add(makeObjectSelectionView(), OBJECT_SELECTION_CARD);
         add(makeCompletionSelectionView(), COMPLETION_SELECTION_CARD);
-        add(makeQuantitySelectionView(), QUANTITY_SELECTION_CARD);
         add(makeLinkSelectionView(), LINK_SELECTION_CARD);
 
         noteField.setText(model.getNote());
@@ -241,7 +226,6 @@ public class InfoComponent extends JPanel {
             Vector shift = switch (element) {
                 case Object ignored -> OBJECT_NAME_SHIFT;
                 case Completion ignored -> CIRCLE_NAME_SHIFT;
-                case Quantity ignored -> CIRCLE_NAME_SHIFT;
                 case Link ignored -> LINK_NAME_SHIFT;
             };
             model.getNamePositions().put(element, shift);
@@ -277,54 +261,6 @@ public class InfoComponent extends JPanel {
         panel.add(valueLabel);
         completionValueComponent = new GraduatedValueComponent(() -> modelChangeDetector.notifyChangeCausedBy(InfoComponent.this));
         panel.add(completionValueComponent);
-
-        // local value
-        panel.add(Box.createVerticalStrut(30));
-        JLabel localValueLabel = new JLabel("Local Value:");
-        localValueLabel.setForeground(Color.WHITE);
-        localValueLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        panel.add(localValueLabel);
-        completionLocalValueComponent = new GraduatedValueComponent(() -> modelChangeDetector.notifyChangeCausedBy(InfoComponent.this));
-        panel.add(completionLocalValueComponent);
-
-        return panel;
-    }
-
-    private JPanel makeQuantitySelectionView() {
-        JPanel panel = makeInfoPanel();
-        this.quantityNameField = makeNameField(panel, text -> {if (this.selectedQuantity != null) {
-            this.selectedQuantity.setName(text);
-            changeNameVisible(selectedQuantity, !text.isEmpty());
-            quantityNameVisibleCheckBox.setSelected(!text.isEmpty());
-            this.modelChangeDetector.notifyChangeCausedBy(InfoComponent.this);
-        }});
-
-        JCheckBox nameVisibleCheckBox = makeNameVisibleCheckBox(panel);
-        nameVisibleCheckBox.addActionListener(event -> {
-            if (this.selectedQuantity != null) {
-                changeNameVisible(this.selectedQuantity, nameVisibleCheckBox.isSelected());
-                this.modelChangeDetector.notifyChangeCausedBy(InfoComponent.this);
-            }
-        });
-        this.quantityNameVisibleCheckBox = nameVisibleCheckBox;
-
-        // value
-        panel.add(Box.createVerticalStrut(30));
-        JLabel valueLabel = new JLabel("Value:");
-        valueLabel.setForeground(Color.WHITE);
-        valueLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        panel.add(valueLabel);
-        quantityValueComponent = new GraduatedValueComponent(() -> modelChangeDetector.notifyChangeCausedBy(InfoComponent.this));
-        panel.add(quantityValueComponent);
-
-        // local value
-        panel.add(Box.createVerticalStrut(30));
-        JLabel localValueLabel = new JLabel("Local Value:");
-        localValueLabel.setForeground(Color.WHITE);
-        localValueLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        panel.add(localValueLabel);
-        quantityLocalValueComponent = new GraduatedValueComponent(() -> modelChangeDetector.notifyChangeCausedBy(InfoComponent.this));
-        panel.add(quantityLocalValueComponent);
 
         return panel;
     }
@@ -379,10 +315,6 @@ public class InfoComponent extends JPanel {
                         switchToCard(COMPLETION_SELECTION_CARD);
                         updateCompletionSelectionView(completion);
                     }
-                    case Quantity quantity -> {
-                        switchToCard(QUANTITY_SELECTION_CARD);
-                        updateQuantitySelectionView(quantity);
-                    }
                     case Link link -> {
                         switchToCard(LINK_SELECTION_CARD);
                         updateLinkSelectionView(link);
@@ -404,10 +336,9 @@ public class InfoComponent extends JPanel {
     private void updateMultipleSelectionView() {
         long objectCount = selection.stream().filter(id -> id instanceof Object).count();
         long completionCount = selection.stream().filter(id -> id instanceof Completion).count();
-        long quantityCount = selection.stream().filter(id -> id instanceof Quantity).count();
         long linkCount = selection.stream().filter(id -> id instanceof Link).count();
-        long total = objectCount + completionCount + quantityCount + linkCount;
-        multipleSelectionLabel.setText(total + " elements in selection: " + objectCount + " objects, " + completionCount + " completions, " + quantityCount + " quantities, " + linkCount + " links");
+        long total = objectCount + completionCount + linkCount;
+        multipleSelectionLabel.setText(total + " elements in selection: " + objectCount + " objects, " + completionCount + " completions, " + linkCount + " links");
     }
 
     private void updateObjectSelectionView(Object object) {
@@ -424,16 +355,7 @@ public class InfoComponent extends JPanel {
         selectedCompletion = completion;
         completionNameField.setText(completion.getName());
         completionValueComponent.setValue(completion.getValue());
-        completionLocalValueComponent.setValue(completion.getLocalValue());
         completionNameVisibleCheckBox.setSelected(checkIfNameVisible(completion));
-    }
-
-    private void updateQuantitySelectionView(Quantity quantity) {
-        selectedQuantity = quantity;
-        quantityNameField.setText(quantity.getName());
-        quantityValueComponent.setValue(quantity.getValue());
-        quantityLocalValueComponent.setValue(quantity.getLocalValue());
-        quantityNameVisibleCheckBox.setSelected(checkIfNameVisible(quantity));
     }
 
     private void updateLinkSelectionView(Link link) {

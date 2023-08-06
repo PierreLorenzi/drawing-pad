@@ -290,7 +290,6 @@ public class DrawingComponent extends JComponent {
         switch (element) {
             case Object object -> drawObject(object, g);
             case Completion completion -> drawCompletion(completion, g);
-            case Quantity quantity -> drawQuantity(quantity, g);
             case Link link -> drawLink(link, g);
         }
     }
@@ -334,19 +333,6 @@ public class DrawingComponent extends JComponent {
         ((Graphics2D)g).setStroke(BASE_LINE_STROKE);
         g.setColor(Color.BLACK);
         g.drawLine(linePosition1.x(), linePosition1.y(), linePosition2.x(), linePosition2.y());
-    }
-
-    private void drawQuantity(Quantity quantity, Graphics g) {
-        var position = model.getPositions().get(quantity);
-
-        if (selectedElements.contains(quantity)) {
-            g.setColor(SELECTION_COLOR);
-        }
-        else {
-            g.setColor(Color.ORANGE);
-        }
-        g.fillOval(position.x()-GeometryManager.CIRCLE_RADIUS, position.y()-GeometryManager.CIRCLE_RADIUS, 2*GeometryManager.CIRCLE_RADIUS, 2*GeometryManager.CIRCLE_RADIUS);
-        drawBaseJoin(quantity, quantity.getBase(), g);
     }
 
     private void drawLink(Link link, Graphics g) {
@@ -522,17 +508,6 @@ public class DrawingComponent extends JComponent {
             }
             Position newPosition = makePositionFromBase(geometryManager.findElementPosition(clickedElement));
             ModelHandler.addCompletion(clickedElement, newPosition, model);
-            changeDetector.notifyChangeCausedBy(this);
-            repaint();
-            return;
-        }
-        // if press with control and shift, add quantity
-        if (isControlPressed(event) && isShiftKeyPressed(event)) {
-            if (clickedElement == null) {
-                return;
-            }
-            Position newPosition = makePositionFromBase(geometryManager.findElementPosition(clickedElement));
-            ModelHandler.addQuantity(clickedElement, newPosition, model);
             changeDetector.notifyChangeCausedBy(this);
             repaint();
             return;

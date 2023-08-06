@@ -15,9 +15,6 @@ public final class Completion extends GraphElement {
     private Integer baseId;
 
     // <= 1
-    private Value localValue;
-
-    // <= 1
     private Value value;
 
     @JsonIgnore
