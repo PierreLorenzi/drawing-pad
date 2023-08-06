@@ -13,6 +13,8 @@ import fr.alphonse.drawingpad.document.utils.Graduations;
 import fr.alphonse.drawingpad.document.utils.GraphHandler;
 import fr.alphonse.drawingpad.view.internal.GeometryManager;
 import fr.alphonse.drawingpad.view.internal.ModelHandler;
+import fr.alphonse.drawingpad.view.internal.linkresize.LinkResizeManager;
+import fr.alphonse.drawingpad.view.internal.linkresize.LinkResizeModification;
 
 import javax.swing.*;
 import java.awt.*;
@@ -31,6 +33,8 @@ public class DrawingComponent extends JComponent {
     private final ChangeDetector<?,?> changeDetector;
 
     private final GeometryManager geometryManager;
+
+    private final LinkResizeManager linkResizeManager;
 
     private final List<GraphElement> selectedElements = new ArrayList<>();
 
@@ -125,6 +129,7 @@ public class DrawingComponent extends JComponent {
         this.model = model;
         this.changeDetector = changeDetector;
         this.geometryManager = new GeometryManager(model);
+        this.linkResizeManager = new LinkResizeManager(model, changeDetector);
         changeDetector.addListener(this, DrawingComponent::reactToModelChange);
         setBackground(Color.WHITE);
         addMouseListener(new MouseListener() {
@@ -562,7 +567,7 @@ public class DrawingComponent extends JComponent {
         return (event.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) != 0;
     }
 
-    private static boolean isCommandPressedDuringEvent(MouseEvent event) {
+    private static boolean isCommandPressedDuringEvent(InputEvent event) {
         return (event.getModifiersEx() & Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()) != 0;
     }
 
@@ -798,6 +803,9 @@ public class DrawingComponent extends JComponent {
     }
 
     private void reactToKey(KeyEvent event) {
+        if (isCommandPressedDuringEvent(event)) {
+            return;
+        }
         switch (event.getKeyCode()) {
             case KeyEvent.VK_UP -> moveSelectedElementBy(ARROW_KEY_UP_DELTA);
             case KeyEvent.VK_DOWN -> moveSelectedElementBy(ARROW_KEY_DOWN_DELTA);
@@ -871,5 +879,15 @@ public class DrawingComponent extends JComponent {
         lastPastedCount += 1;
         return lastPastedCount;
 
+    }
+
+    public void resizeLinks(LinkResizeModification modification) {
+        if (selectedElements.size() != 1) {
+            return;
+        }
+        GraphElement element = selectedElements.get(0);
+        if (element instanceof Link link) {
+            linkResizeManager.resizeLinks(link, modification);
+        }
     }
 }

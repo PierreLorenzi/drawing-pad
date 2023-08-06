@@ -9,6 +9,7 @@ import fr.alphonse.drawingpad.document.utils.DocumentUtils;
 import fr.alphonse.drawingpad.document.utils.GraphHandler;
 import fr.alphonse.drawingpad.view.DrawingComponent;
 import fr.alphonse.drawingpad.view.InfoComponent;
+import fr.alphonse.drawingpad.view.internal.linkresize.LinkResizeModification;
 
 import javax.swing.*;
 import java.awt.*;
@@ -186,6 +187,10 @@ public class Document {
 
     public void selectAll() {
         this.drawingComponent.selectAll();
+    }
+
+    public void resizeLinks(LinkResizeModification modification) {
+        this.drawingComponent.resizeLinks(modification);
     }
 
     public Drawing copy() {

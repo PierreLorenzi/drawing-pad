@@ -3,6 +3,7 @@ package fr.alphonse.drawingpad;
 import fr.alphonse.drawingpad.data.Drawing;
 import fr.alphonse.drawingpad.document.Document;
 import fr.alphonse.drawingpad.document.utils.DocumentUtils;
+import fr.alphonse.drawingpad.view.internal.linkresize.LinkResizeModification;
 
 import javax.swing.*;
 import java.awt.*;
@@ -117,6 +118,29 @@ public class DrawingPadApplication {
         deleteMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0));
         deleteMenuItem.addActionListener(event -> document.delete());
         editMenu.add(deleteMenuItem);
+
+        JMenu resizeMenu = new JMenu("Resize");
+        mb.add(resizeMenu);
+
+        var decrementWidthMenuItem = new JMenuItem("Decrease Width");
+        decrementWidthMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
+        decrementWidthMenuItem.addActionListener(event -> document.resizeLinks(LinkResizeModification.DECREMENT_WIDTH));
+        resizeMenu.add(decrementWidthMenuItem);
+
+        var incrementWidthMenuItem = new JMenuItem("Increase Width");
+        incrementWidthMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
+        incrementWidthMenuItem.addActionListener(event -> document.resizeLinks(LinkResizeModification.INCREMENT_WIDTH));
+        resizeMenu.add(incrementWidthMenuItem);
+
+        var decrementHeightMenuItem = new JMenuItem("Decrease Height");
+        decrementHeightMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_UP, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
+        decrementHeightMenuItem.addActionListener(event -> document.resizeLinks(LinkResizeModification.DECREMENT_HEIGHT));
+        resizeMenu.add(decrementHeightMenuItem);
+
+        var incrementHeightMenuItem = new JMenuItem("Increase Height");
+        incrementHeightMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
+        incrementHeightMenuItem.addActionListener(event -> document.resizeLinks(LinkResizeModification.INCREMENT_HEIGHT));
+        resizeMenu.add(incrementHeightMenuItem);
 
         return mb;
     }

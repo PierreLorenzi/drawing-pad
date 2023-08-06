@@ -33,4 +33,8 @@ public record Vector(int x, int y) {
     public Vector multiply(float factor) {
         return new Vector((int)(x * factor), (int)(y * factor));
     }
+
+    public Vector translate(Vector vector) {
+        return new Vector(x + vector.x(), y + vector.y());
+    }
 }
